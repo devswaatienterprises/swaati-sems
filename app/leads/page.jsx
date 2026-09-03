@@ -10,178 +10,588 @@ import {
   Search,
   Filter,
   Kanban,
-  List,
+  Table as TableIcon,
   Phone,
   Mail,
-  Building2,
+  MapPin,
   Calendar,
-  IndianRupee,
+  Globe2,
+  MessageCircle,
+  User,
+  CheckCircle2,
+  Clock,
+  Edit2,
+  Eye,
+  ArrowUpDown,
+  FileText,
 } from 'lucide-react';
 
 export default function LeadsPage() {
-  const { currentRole, leads, addLead, updateLeadStatus } = useCrm();
+  const {
+    currentRole,
+    currentUser,
+    employees,
+    leads,
+    addLead,
+    updateLeadStatus,
+    updateLead,
+    t,
+  } = useCrm();
 
-  const [viewMode, setViewMode] = useState('kanban'); // 'kanban' | 'list'
+  // Table View is primary / default as required
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'kanban'
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState('ALL');
+  const [assigneeFilter, setAssigneeFilter] = useState('ALL');
+  const [sortBy, setSortBy] = useState('latest'); // 'latest' | 'followUp' | 'company' | 'status'
 
-  const filteredLeads = leads.filter((l) => {
-    const matchesSearch =
-      l.customerCompany.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.productInterested.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'ALL' || l.status === statusFilter;
+  // Modals
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingLead, setEditingLead] = useState(null);
 
-    return matchesSearch && matchesStatus;
-  });
+  const pipelineStages = [
+    'New',
+    'Contacted',
+    'Follow-up',
+    'Quotation Sent',
+    'Won',
+    'Lost',
+  ];
 
-  const pipelineStages = ['New', 'Contacted', 'Follow-up', 'Quotation Sent', 'Won', 'Lost'];
+  // Helper for Status Badge styling
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'New':
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'Contacted':
+        return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'Follow-up':
+        return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'Quotation Sent':
+        return 'bg-sky-50 text-sky-700 border-sky-200';
+      case 'Won':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'Lost':
+        return 'bg-rose-50 text-rose-700 border-rose-200';
+      default:
+        return 'bg-slate-50 text-slate-700 border-slate-200';
+    }
+  };
+
+  // Helper for Source Badge
+  const renderSourceBadge = (source) => {
+    switch (source) {
+      case 'Website':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+            <Globe2 className="w-2.5 h-2.5" />
+            Website
+          </span>
+        );
+      case 'WhatsApp':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <MessageCircle className="w-2.5 h-2.5" />
+            WhatsApp
+          </span>
+        );
+      case 'Call':
+      case 'Phone':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+            <Phone className="w-2.5 h-2.5" />
+            Call
+          </span>
+        );
+      case 'Referral':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+            Referral
+          </span>
+        );
+      case 'Email':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+            <Mail className="w-2.5 h-2.5" />
+            Email
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+            {source || 'Direct'}
+          </span>
+        );
+    }
+  };
+
+  // Filter & Search
+  const filteredLeads = leads
+    .filter((l) => {
+      const term = searchTerm.toLowerCase().trim();
+      const matchesSearch =
+        !term ||
+        (l.leadCode || '').toLowerCase().includes(term) ||
+        (l.id || '').toLowerCase().includes(term) ||
+        (l.companyName || '').toLowerCase().includes(term) ||
+        (l.leadName || '').toLowerCase().includes(term) ||
+        (l.mobileNumber || '').toLowerCase().includes(term) ||
+        (l.email || '').toLowerCase().includes(term) ||
+        (l.productInterested || '').toLowerCase().includes(term) ||
+        (l.requirement || '').toLowerCase().includes(term) ||
+        (l.location || '').toLowerCase().includes(term) ||
+        (l.assignedTo || '').toLowerCase().includes(term);
+
+      const matchesStatus = statusFilter === 'ALL' || l.status === statusFilter;
+      const matchesSource = sourceFilter === 'ALL' || l.source === sourceFilter;
+      const matchesAssignee = assigneeFilter === 'ALL' || l.assignedTo === assigneeFilter;
+
+      return matchesSearch && matchesStatus && matchesSource && matchesAssignee;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'followUp') {
+        return new Date(a.followUpDate || '2099-01-01') - new Date(b.followUpDate || '2099-01-01');
+      }
+      if (sortBy === 'company') {
+        return (a.companyName || a.leadName || '').localeCompare(b.companyName || b.leadName || '');
+      }
+      if (sortBy === 'status') {
+        return (a.status || '').localeCompare(b.status || '');
+      }
+      // default: latest lead
+      return (b.id || '').localeCompare(a.id || '');
+    });
+
+  const handleEditLead = (lead) => {
+    setEditingLead(lead);
+  };
+
+  const handleSaveLead = (formData) => {
+    if (editingLead) {
+      if (updateLead) {
+        updateLead(editingLead.id, formData);
+      }
+      setEditingLead(null);
+    } else {
+      addLead(formData);
+      setIsAddModalOpen(false);
+    }
+  };
 
   return (
     <Shell>
+      {/* Add / Edit Lead Modal */}
+      <LeadModal
+        isOpen={isAddModalOpen || !!editingLead}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditingLead(null);
+        }}
+        initialData={editingLead}
+        onSave={handleSaveLead}
+      />
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
             <TrendingUp className="w-6 h-6 text-purple-600" />
-            <span>Leads & Enterprise Enquiries</span>
+            <span>Leads & Business Inquiries</span>
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Commercial pipeline management from initial contact to contract execution.
+          <p className="text-xs text-slate-500 font-medium mt-1">
+            Track customer inquiries, material requirements, sales stages, and follow-up schedules.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* View Toggle */}
-          <div className="bg-white p-1 rounded-lg border border-slate-200 shadow-xs flex items-center text-xs font-semibold">
+          {/* View Mode Toggle: Table View is Default */}
+          <div className="bg-white p-1 rounded-xl border border-slate-200 shadow-xs flex items-center text-xs font-bold">
             <button
-              onClick={() => setViewMode('kanban')}
-              className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${
-                viewMode === 'kanban' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+              onClick={() => setViewMode('table')}
+              className={`px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
+                viewMode === 'table'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <Kanban className="w-3.5 h-3.5" /> Pipeline Board
+              <TableIcon className="w-3.5 h-3.5" />
+              <span>Table View</span>
             </button>
             <button
-              onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${
-                viewMode === 'list' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+              onClick={() => setViewMode('kanban')}
+              className={`px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
+                viewMode === 'kanban'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <List className="w-3.5 h-3.5" /> List View
+              <Kanban className="w-3.5 h-3.5" />
+              <span>Pipeline View</span>
             </button>
           </div>
 
           <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-xs shadow-sm flex items-center gap-2"
+            onClick={() => {
+              setEditingLead(null);
+              setIsAddModalOpen(true);
+            }}
+            className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-xs shadow-sm shadow-purple-600/20 flex items-center gap-2 transition-all shrink-0"
           >
-            <Plus className="w-4 h-4" /> Add Lead
+            <Plus className="w-4 h-4" />
+            <span>Add Lead</span>
           </button>
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+      {/* Filter & Search Bar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs mb-6 flex flex-col lg:flex-row items-center justify-between gap-4">
+        {/* Search Input */}
+        <div className="relative w-full lg:w-96">
+          <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search company, contact, product..."
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            placeholder="Search company, client, Lead ID, product, mobile..."
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-purple-500 focus:outline-none"
           />
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
-            <Filter className="w-3.5 h-3.5 text-slate-400" /> Stage:
+        {/* Filter Dropdowns */}
+        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-start lg:justify-end text-xs">
+          {/* Status Filter */}
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
+            <span className="text-slate-400 font-bold text-[11px]">Status:</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
+            >
+              <option value="ALL">All Statuses ({leads.length})</option>
+              {pipelineStages.map((stg) => (
+                <option key={stg} value={stg}>
+                  {stg} ({leads.filter((l) => l.status === stg).length})
+                </option>
+              ))}
+            </select>
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none"
-          >
-            <option value="ALL">All Stages</option>
-            {pipelineStages.map((stg) => (
-              <option key={stg} value={stg}>{stg}</option>
-            ))}
-          </select>
+
+          {/* Source Filter */}
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
+            <span className="text-slate-400 font-bold text-[11px]">Source:</span>
+            <select
+              value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value)}
+              className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
+            >
+              <option value="ALL">All Sources</option>
+              <option value="Website">Website</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Call">Call</option>
+              <option value="Walk-in">Walk-in</option>
+              <option value="Referral">Referral</option>
+              <option value="Email">Email</option>
+            </select>
+          </div>
+
+          {/* Assigned To Filter */}
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
+            <span className="text-slate-400 font-bold text-[11px]">Assigned:</span>
+            <select
+              value={assigneeFilter}
+              onChange={(e) => setAssigneeFilter(e.target.value)}
+              className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
+            >
+              <option value="ALL">All Team</option>
+              {employees
+                .filter((e) => e.status === 'Active')
+                .map((emp) => (
+                  <option key={emp.id} value={emp.name}>
+                    {emp.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          {/* Sort By */}
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
+            <ArrowUpDown className="w-3 h-3 text-slate-400" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
+            >
+              <option value="latest">Latest Lead</option>
+              <option value="followUp">Follow-up Date</option>
+              <option value="company">Client / Company</option>
+              <option value="status">Status</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* KANBAN PIPELINE BOARD */}
-      {viewMode === 'kanban' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 overflow-x-auto pb-4">
-          {pipelineStages.map((stage) => {
-            const stageLeads = filteredLeads.filter((l) => l.status === stage);
-            const totalStageVal = stageLeads.reduce((acc, l) => acc + (l.estimatedValue || 0), 0);
+      {/* ========================================================== */}
+      {/* 1. TABLE VIEW (PRIMARY / DEFAULT) */}
+      {/* ========================================================== */}
+      {viewMode === 'table' ? (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider sticky top-0 z-10 text-[11px]">
+                <tr>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Lead ID</th>
+                  <th className="py-3.5 px-4 min-w-[180px]">Client / Company</th>
+                  <th className="py-3.5 px-4 min-w-[160px]">Contact Person</th>
+                  <th className="py-3.5 px-4 min-w-[200px]">Product / Requirement</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Source</th>
+                  <th className="py-3.5 px-4 min-w-[140px]">Assigned To</th>
+                  <th className="py-3.5 px-4 min-w-[130px]">Status</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Follow-up</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                {filteredLeads.map((l) => {
+                  const isFollowUpOverdue =
+                    l.followUpDate &&
+                    new Date(l.followUpDate) < new Date(new Date().setHours(0, 0, 0, 0)) &&
+                    l.status !== 'Won' &&
+                    l.status !== 'Lost';
 
-            return (
-              <div
-                key={stage}
-                className="bg-slate-200/40 rounded-2xl p-3 border border-slate-200 flex flex-col min-w-[260px] min-h-[500px]"
-              >
-                {/* Column Header */}
-                <div className="mb-3 pb-2 border-b border-slate-300">
-                  <div className="flex items-center justify-between font-bold text-xs text-slate-800 uppercase tracking-wider">
-                    <span>{stage}</span>
-                    <span className="w-5 h-5 rounded-full bg-slate-300 text-slate-800 text-[10px] flex items-center justify-center">
-                      {stageLeads.length}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-slate-500 font-semibold mt-1">
-                    ₹{(totalStageVal / 100000).toFixed(1)} Lakhs
-                  </div>
-                </div>
+                  return (
+                    <tr key={l.id} className="hover:bg-slate-50/80 transition-colors">
+                      {/* Lead ID */}
+                      <td className="py-3.5 px-4 font-mono font-bold text-slate-500 text-[11px] whitespace-nowrap">
+                        <span className="px-2 py-0.5 bg-slate-100 rounded border border-slate-200/80">
+                          {l.leadCode || l.id}
+                        </span>
+                      </td>
 
-                {/* Lead Cards */}
-                <div className="space-y-3 flex-1 overflow-y-auto">
-                  {stageLeads.length === 0 ? (
-                    <div className="h-28 flex items-center justify-center border-2 border-dashed border-slate-300 rounded-xl text-slate-400 text-[11px] font-medium">
-                      No leads in {stage}
-                    </div>
-                  ) : (
-                    stageLeads.map((l) => (
-                      <div
-                        key={l.id}
-                        className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs hover:shadow-md transition-all space-y-2 text-xs"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono text-[10px] font-bold text-slate-400">{l.id}</span>
-                          <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700">
-                            ₹{(l.estimatedValue / 100000).toFixed(1)}L
+                      {/* Client / Company */}
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-slate-900 leading-tight">
+                          {l.companyName || l.leadName}
+                        </div>
+                        {l.location && (
+                          <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                            <MapPin className="w-2.5 h-2.5 shrink-0" />
+                            <span className="truncate max-w-[160px]">{l.location}</span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Contact Person */}
+                      <td className="py-3.5 px-4">
+                        <div className="font-semibold text-slate-800">{l.leadName}</div>
+                        <div className="text-[10px] text-slate-500 font-mono mt-0.5 flex items-center gap-1">
+                          <Phone className="w-2.5 h-2.5 text-slate-400" />
+                          <span>{l.mobileNumber}</span>
+                        </div>
+                      </td>
+
+                      {/* Product / Requirement */}
+                      <td className="py-3.5 px-4">
+                        <div className="font-semibold text-blue-700 leading-snug">
+                          {l.productInterested}
+                        </div>
+                        {l.requirement && (
+                          <div
+                            className="text-[10px] text-slate-500 truncate max-w-[220px] mt-0.5"
+                            title={l.requirement}
+                          >
+                            {l.requirement}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Source */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {renderSourceBadge(l.source)}
+                      </td>
+
+                      {/* Assigned To */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-5 h-5 rounded-full bg-slate-800 text-white text-[9px] font-bold flex items-center justify-center shrink-0">
+                            {(l.assignedTo || 'SE').slice(0, 2).toUpperCase()}
+                          </div>
+                          <span className="font-bold text-slate-800 truncate max-w-[120px]">
+                            {l.assignedTo || 'Unassigned'}
                           </span>
                         </div>
+                      </td>
 
-                        <div className="font-bold text-slate-900 leading-snug">{l.customerCompany}</div>
-                        <div className="text-[11px] text-slate-500 font-medium">{l.productInterested}</div>
-                        <div className="text-[10px] text-slate-400">{l.contactPerson}</div>
+                      {/* Status */}
+                      <td className="py-3.5 px-4">
+                        <select
+                          value={l.status}
+                          onChange={(e) => updateLeadStatus(l.id, e.target.value)}
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border focus:outline-none cursor-pointer transition-all ${getStatusBadgeClass(
+                            l.status
+                          )}`}
+                        >
+                          {pipelineStages.map((stg) => (
+                            <option key={stg} value={stg}>
+                              {stg}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
 
-                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
-                          <span>Exec: <strong className="text-slate-700">{l.assignedTo}</strong></span>
-                          <span>F/up: {l.followUpDate}</span>
-                        </div>
+                      {/* Follow-up Date */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {l.followUpDate ? (
+                          <div
+                            className={`flex items-center gap-1 text-[11px] font-semibold ${
+                              isFollowUpOverdue ? 'text-rose-600 font-bold' : 'text-slate-600'
+                            }`}
+                          >
+                            <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span>{l.followUpDate}</span>
+                            {isFollowUpOverdue && (
+                              <span className="text-[9px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded font-bold">
+                                Overdue
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-[11px]">-</span>
+                        )}
+                      </td>
 
-                        {/* Interactive Move Buttons */}
-                        <div className="pt-2 flex flex-wrap gap-1">
-                          {pipelineStages
-                            .filter((s) => s !== stage)
-                            .map((targetStage) => (
-                              <button
-                                key={targetStage}
-                                onClick={() => updateLeadStatus(l.id, targetStage)}
-                                className="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[9px] font-bold"
-                              >
-                                → {targetStage}
-                              </button>
-                            ))}
-                        </div>
+                      {/* Actions */}
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <button
+                          onClick={() => handleEditLead(l)}
+                          className="px-3 py-1.5 bg-slate-100 hover:bg-purple-50 hover:text-purple-700 text-slate-700 font-bold rounded-lg text-xs transition-colors inline-flex items-center gap-1.5"
+                          title="Edit Lead Details"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Edit</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {filteredLeads.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className="py-12 text-center text-slate-400">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <TrendingUp className="w-8 h-8 text-slate-300" />
+                        <span className="font-semibold text-slate-500">No matching leads found</span>
+                        <span className="text-[11px] text-slate-400">
+                          Try adjusting your search criteria or add a new lead inquiry.
+                        </span>
                       </div>
-                    ))
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* ========================================================== */
+        /* 2. PIPELINE KANBAN VIEW (OPTIONAL TOGGLE) */
+        /* ========================================================== */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 overflow-x-auto pb-4">
+          {pipelineStages.map((stage) => {
+            const stageLeads = filteredLeads.filter((l) => l.status === stage);
+
+            return (
+              <div key={stage} className="bg-slate-100/70 rounded-2xl p-3.5 flex flex-col min-h-[500px]">
+                {/* Column Header */}
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
+                    {stage}
+                  </span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700">
+                    {stageLeads.length}
+                  </span>
+                </div>
+
+                {/* Cards */}
+                <div className="flex-1 space-y-3 overflow-y-auto">
+                  {stageLeads.map((l) => (
+                    <div
+                      key={l.id}
+                      className="bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-xs hover:shadow-md transition-shadow text-xs space-y-2"
+                    >
+                      {/* Source Badge & Code */}
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[9px] text-slate-400 font-bold">
+                          {l.leadCode || l.id}
+                        </span>
+                        {renderSourceBadge(l.source)}
+                      </div>
+
+                      <h4 className="font-bold text-slate-900 text-xs leading-snug">
+                        {l.companyName || l.leadName}
+                      </h4>
+                      {l.companyName && l.leadName && (
+                        <div className="text-[10px] text-slate-500 font-medium">{l.leadName}</div>
+                      )}
+
+                      <div className="text-[11px] text-blue-700 font-semibold bg-blue-50/60 p-1.5 rounded-lg border border-blue-100/80">
+                        {l.productInterested}
+                      </div>
+
+                      {/* Phone & Location */}
+                      <div className="space-y-0.5 text-[10px] text-slate-600">
+                        <div className="flex items-center gap-1">
+                          <Phone className="w-3 h-3 text-slate-400" />
+                          <span className="font-mono">{l.mobileNumber}</span>
+                        </div>
+                        {l.location && (
+                          <div className="flex items-center gap-1 text-slate-500 truncate">
+                            <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span className="truncate">{l.location}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Attribution Info */}
+                      <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-500 space-y-0.5">
+                        <div>
+                          Assignee: <strong className="text-blue-700">{l.assignedTo}</strong>
+                        </div>
+                        {l.followUpDate && (
+                          <div className="flex items-center gap-1 text-slate-600">
+                            <Calendar className="w-3 h-3 text-slate-400" />
+                            <span>Follow-up: <strong>{l.followUpDate}</strong></span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Status Dropdown & Edit Action */}
+                      <div className="pt-1 flex items-center gap-1.5">
+                        <select
+                          value={l.status}
+                          onChange={(e) => updateLeadStatus(l.id, e.target.value)}
+                          className="flex-1 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[10px] font-bold text-slate-700 focus:outline-none"
+                        >
+                          {pipelineStages.map((stg) => (
+                            <option key={stg} value={stg}>
+                              Stage: {stg}
+                            </option>
+                          ))}
+                        </select>
+
+                        <button
+                          onClick={() => handleEditLead(l)}
+                          className="p-1 text-slate-400 hover:text-purple-600 hover:bg-slate-100 rounded"
+                          title="Edit Lead"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {stageLeads.length === 0 && (
+                    <div className="p-6 text-center text-slate-400 text-[10px]">No leads</div>
                   )}
                 </div>
               </div>
@@ -189,74 +599,6 @@ export default function LeadsPage() {
           })}
         </div>
       )}
-
-      {/* TABLE LIST VIEW */}
-      {viewMode === 'list' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                <tr>
-                  <th className="py-3.5 px-4">Company / Lead</th>
-                  <th className="py-3.5 px-4">Product Interested</th>
-                  <th className="py-3.5 px-4">Est. Value</th>
-                  <th className="py-3.5 px-4">Assigned Exec</th>
-                  <th className="py-3.5 px-4">Follow-up</th>
-                  <th className="py-3.5 px-4">Stage</th>
-                  <th className="py-3.5 px-4 text-right">Update Stage</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 font-medium text-slate-700">
-                {filteredLeads.map((l) => (
-                  <tr key={l.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div className="font-bold text-slate-900 text-sm">{l.customerCompany}</div>
-                      <div className="text-[11px] text-slate-500">{l.contactPerson} • {l.phone}</div>
-                    </td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-800">{l.productInterested}</td>
-                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
-                      ₹{l.estimatedValue.toLocaleString('en-IN')}
-                    </td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-800">{l.assignedTo}</td>
-                    <td className="py-3.5 px-4 font-mono">{l.followUpDate}</td>
-                    <td className="py-3.5 px-4">
-                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                        l.status === 'Won'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : l.status === 'Quotation Sent'
-                          ? 'bg-purple-100 text-purple-800'
-                          : l.status === 'Lost'
-                          ? 'bg-rose-100 text-rose-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {l.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <select
-                        value={l.status}
-                        onChange={(e) => updateLeadStatus(l.id, e.target.value)}
-                        className="px-2.5 py-1 bg-slate-100 border border-slate-300 rounded font-semibold text-xs"
-                      >
-                        {pipelineStages.map((stg) => (
-                          <option key={stg} value={stg}>{stg}</option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Modal */}
-      <LeadModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={addLead}
-      />
     </Shell>
   );
 }

@@ -1,10 +1,15 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
 export async function apiRequest(endpoint, method = 'GET', data = null, customHeaders = {}) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('crm_token') : null;
+
   const headers = {
-    'Content-Type': 'application/json',
     ...customHeaders,
   };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   const options = {
     method,
@@ -12,8 +17,14 @@ export async function apiRequest(endpoint, method = 'GET', data = null, customHe
     credentials: 'include',
   };
 
-  if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
-    options.body = JSON.stringify(data);
+  if (data) {
+    if (data instanceof FormData) {
+      // Browser automatically sets multipart/form-data with boundary
+      options.body = data;
+    } else if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
+      headers['Content-Type'] = 'application/json';
+      options.body = JSON.stringify(data);
+    }
   }
 
   try {
@@ -21,7 +32,7 @@ export async function apiRequest(endpoint, method = 'GET', data = null, customHe
     const json = await res.json();
     return json;
   } catch (err) {
-    console.warn(`[API Call Fallback to local state]: ${endpoint}`, err);
-    return null;
+    console.error(`[API Call Error]: ${endpoint}`, err);
+    return { success: false, message: err.message || 'Network error occurred' };
   }
 }

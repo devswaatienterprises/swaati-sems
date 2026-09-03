@@ -3,25 +3,62 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCrm } from '@/context/CrmContext';
-import { Eye, EyeOff, Lock, Mail, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, User, ShieldCheck, ArrowRight, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setDemoRole } = useCrm();
+  const { login, switchUser, employees } = useCrm();
 
-  const [email, setEmail] = useState('admin@swaatienterprises.in');
-  const [password, setPassword] = useState('••••••••••••');
+  // Login Mode: 'ADMIN' (Email) | 'EMPLOYEE' (User ID)
+  const [loginMode, setLoginMode] = useState('ADMIN');
+  const [credential, setCredential] = useState('admin@swaatienterprises.in');
+  const [password, setPassword] = useState('Admin@123');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleRoleLogin = (role) => {
-    setDemoRole(role);
-    router.push('/dashboard');
+  const handleModeChange = (mode) => {
+    setLoginMode(mode);
+    setErrorMessage('');
+    if (mode === 'ADMIN') {
+      setCredential('admin@swaatienterprises.in');
+      setPassword('Admin@123');
+    } else {
+      setCredential('amit.v');
+      setPassword('Employee@123');
+    }
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
-    handleRoleLogin('ADMIN');
+    setErrorMessage('');
+    setIsSubmitting(true);
+
+    const result = await login(credential.trim(), password, loginMode);
+    setIsSubmitting(false);
+
+    if (result.success) {
+      router.push('/dashboard');
+    } else {
+      setErrorMessage(result.message || 'Invalid credentials provided.');
+    }
+  };
+
+  const handleQuickDemo = async (userId) => {
+    setErrorMessage('');
+    setIsSubmitting(true);
+    const pass = userId === 'admin' ? 'Admin@123' : 'Employee@123';
+    const mode = userId === 'admin' ? 'ADMIN' : 'EMPLOYEE';
+    const cred = userId === 'admin' ? 'admin@swaatienterprises.in' : userId;
+
+    const result = await login(cred, pass, mode);
+    setIsSubmitting(false);
+
+    if (result.success) {
+      router.push('/dashboard');
+    } else {
+      setErrorMessage(result.message || 'Sign in failed.');
+    }
   };
 
   return (
@@ -35,93 +72,100 @@ export default function LoginPage() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         {/* Brand Badge */}
         <div className="flex justify-center mb-4">
-          <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-extrabold text-3xl shadow-xl shadow-blue-600/30">
-            SE
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-700 flex items-center justify-center text-white font-black text-xl tracking-wider shadow-xl shadow-blue-600/30 border border-blue-400/30">
+            SEMS
           </div>
         </div>
 
         <h2 className="text-center text-3xl font-extrabold text-white tracking-tight">
-          Swaati Enterprises
+          SEMS Portal
         </h2>
-        <p className="mt-2 text-center text-sm text-slate-400 font-medium">
-          Internal CRM & Business Operating System
+        <p className="mt-1.5 text-center text-sm font-semibold text-blue-400">
+          Swaati Enterprises Management System
+        </p>
+        <p className="mt-1 text-center text-xs text-slate-400 font-medium">
+          Task Management & Business Operating System
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4">
         <div className="bg-slate-800/90 backdrop-blur-md py-8 px-6 shadow-2xl rounded-2xl border border-slate-700 sm:px-10">
-          {/* Quick Demo Role Selector */}
-          <div className="mb-8 p-4 bg-slate-900/80 rounded-xl border border-slate-700/60">
-            <div className="flex items-center gap-2 text-xs font-bold text-blue-400 uppercase tracking-wider mb-3">
-              <ShieldCheck className="w-4 h-4 text-blue-400" /> Demo Role Quick Access:
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => handleRoleLogin('ADMIN')}
-                className="py-2.5 px-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 rounded-lg text-xs font-semibold transition-all text-center"
-              >
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRoleLogin('MANAGER')}
-                className="py-2.5 px-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 rounded-lg text-xs font-semibold transition-all text-center"
-              >
-                Manager
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRoleLogin('EMPLOYEE')}
-                className="py-2.5 px-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-lg text-xs font-semibold transition-all text-center"
-              >
-                Employee
-              </button>
-            </div>
+          {/* Persona Access Switcher Tabs */}
+          <div className="grid grid-cols-2 gap-2 p-1 bg-slate-900/90 rounded-xl border border-slate-700/80 mb-6">
+            <button
+              type="button"
+              onClick={() => handleModeChange('ADMIN')}
+              className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                loginMode === 'ADMIN'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Admin Login</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeChange('EMPLOYEE')}
+              className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                loginMode === 'EMPLOYEE'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>Team Member Login</span>
+            </button>
           </div>
 
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-700"></div>
+          {/* Error Message Alert */}
+          {errorMessage && (
+            <div className="mb-5 p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-semibold flex items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+              <span>{errorMessage}</span>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-slate-800 px-3 text-slate-400 font-medium">Or Sign In Manually</span>
-            </div>
-          </div>
+          )}
 
-          {/* Login Form */}
-          <form className="space-y-5" onSubmit={handleFormSubmit}>
+          {/* Form */}
+          <form className="space-y-4 text-xs" onSubmit={handleFormSubmit}>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                Email Address
+              <label className="block font-bold text-slate-300 uppercase tracking-wider mb-1">
+                {loginMode === 'ADMIN' ? 'Admin Email Address' : 'Team Member User ID'}
               </label>
               <div className="relative rounded-lg shadow-xs">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <Mail className="w-4 h-4" />
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                  {loginMode === 'ADMIN' ? <Mail className="w-4 h-4" /> : <User className="w-4 h-4" />}
                 </div>
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  type={loginMode === 'ADMIN' ? 'email' : 'text'}
+                  value={credential}
+                  onChange={(e) => setCredential(e.target.value)}
+                  placeholder={loginMode === 'ADMIN' ? 'admin@swaatienterprises.in' : 'e.g. amit.v'}
+                  className="block w-full pl-10 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs font-medium"
                   required
                 />
               </div>
+              <p className="mt-1 text-[10px] text-slate-500">
+                {loginMode === 'ADMIN'
+                  ? 'Login using registered administrator email'
+                  : 'Enter the User ID provided by your administrator'}
+              </p>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+              <label className="block font-bold text-slate-300 uppercase tracking-wider mb-1">
                 Password
               </label>
               <div className="relative rounded-lg shadow-xs">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                   <Lock className="w-4 h-4" />
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter account password"
+                  className="block w-full pl-10 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs font-medium"
                   required
                 />
                 <button
@@ -134,34 +178,52 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs">
-              <label className="flex items-center text-slate-400">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="ml-2 font-medium">Remember me</span>
-              </label>
-
-              <a href="#" className="font-semibold text-blue-400 hover:text-blue-300">
-                Forgot password?
-              </a>
-            </div>
-
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-lg shadow-blue-600/30 transition-all text-sm"
+              className={`w-full mt-2 flex items-center justify-center gap-2 py-3 px-4 text-white font-bold rounded-lg shadow-lg transition-all text-xs ${
+                loginMode === 'ADMIN'
+                  ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/30'
+                  : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30'
+              }`}
             >
-              <span>Sign In to CRM Portal</span>
+              <span>{loginMode === 'ADMIN' ? 'Sign In as Admin' : 'Sign In as Team Member'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
+
+          {/* Quick Demo Access Links */}
+          <div className="mt-6 pt-5 border-t border-slate-700/80">
+            <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-2.5 text-center">
+              Demo Accounts:
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('admin')}
+                className="p-2 bg-purple-950/40 hover:bg-purple-900/50 border border-purple-500/30 rounded-lg text-[11px] font-bold text-purple-300 text-center transition-colors"
+              >
+                Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('rajesh.s')}
+                className="p-2 bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/30 rounded-lg text-[11px] font-bold text-blue-300 text-center transition-colors"
+              >
+                Sales Exec
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('amit.v')}
+                className="p-2 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/30 rounded-lg text-[11px] font-bold text-emerald-300 text-center transition-colors"
+              >
+                Site Engr
+              </button>
+            </div>
+          </div>
         </div>
 
         <p className="mt-6 text-center text-xs text-slate-500 font-medium">
-          Authorized Swaati Enterprises personnel only • Confidential
+          Authorized Swaati Enterprises team members only • No public registration
         </p>
       </div>
     </div>

@@ -2,8 +2,8 @@ import './globals.css';
 import { CrmProvider } from '@/context/CrmContext';
 
 export const metadata = {
-  title: 'Swaati Enterprises - Internal CRM Operating System',
-  description: 'Internal Management System for Swaati Enterprises',
+  title: 'SEMS - Swaati Enterprises Management System',
+  description: 'SEMS (Swaati Enterprises Management System) - Task Management & CRM Operating System',
 };
 
 export default function RootLayout({ children }) {

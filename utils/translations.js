@@ -1,0 +1,151 @@
+// Swaati Enterprises SEMS - Internationalization Dictionary (English & Marathi)
+
+export const translations = {
+  en: {
+    // Top Bar & Global
+    brand_title: 'Swaati Enterprises SEMS',
+    crm_subtitle: 'SEMS - Task Management & CRM Operating System',
+    check_in: 'Check In',
+    check_out: 'Check Out',
+    checked_in: 'Checked In',
+    mark_check_in: 'Mark Check-In',
+    mark_check_out: 'Mark Check-Out',
+    role_admin: 'Admin',
+    role_employee: 'Team Member',
+    logout: 'Logout',
+    my_profile: 'My Profile',
+    system_settings: 'System Settings',
+    notifications: 'Notifications',
+    all_caught_up: "You're all caught up.",
+    mark_all_read: 'Mark All as Read',
+    mark_read: 'Mark Read',
+
+    // Navigation Items
+    nav_dashboard: 'Dashboard',
+    nav_employees: 'Team Members',
+    nav_attendance: 'Daily Attendance',
+    nav_leave: 'Leave Management',
+    nav_tasks: 'Tasks',
+    nav_leads: 'Leads & Enquiries',
+    nav_products: 'Product Documents',
+    nav_reports: 'Reports & Payroll',
+    nav_notifications: 'Notifications',
+    nav_messages: 'Messages',
+    nav_settings: 'Settings',
+
+    // Actions & Buttons
+    btn_add_employee: 'Add Team Member',
+    btn_edit_employee: 'Edit Team Member',
+    btn_deactivate_user: 'Deactivate Member',
+    btn_reactivate_user: 'Reactivate Member',
+    btn_create_task: 'Create Task',
+    btn_add_lead: 'Add Lead',
+    btn_apply_leave: 'Apply for Leave',
+    btn_upload_document: 'Upload Datasheet',
+    btn_replace_document: 'Replace Document',
+    btn_download_report: 'Download Payroll Report',
+    btn_download_csv: 'Download CSV',
+    btn_download_excel: 'Download Excel',
+    btn_save: 'Save Changes',
+    btn_cancel: 'Cancel',
+    btn_confirm: 'Confirm',
+    btn_approve: 'Approve',
+    btn_reject: 'Reject',
+    btn_send_message: 'Send Message',
+
+    // Attendance & Statuses
+    status_present: 'Present',
+    status_absent: 'Absent',
+    status_late: 'Late',
+    status_half_day: 'Half Day',
+    status_on_leave: 'On Leave',
+    status_holiday: 'Holiday',
+    status_weekly_off: 'Weekly Off',
+
+    // Empty States
+    empty_tasks: 'No tasks assigned yet.',
+    empty_leads: 'No leads found.',
+    empty_notifications: "You're all caught up.",
+    empty_documents: 'No product documents uploaded yet.',
+    empty_messages: 'No conversation selected.',
+    empty_leaves: 'No leave requests submitted.',
+
+    // Permissions
+    permission_denied: "You don't have permission to perform this action.",
+    access_restricted: "This feature is currently not active for your account. Please contact your Admin.",
+  },
+
+  mr: {
+    // Marathi Translations
+    brand_title: 'स्वाती एंटरप्रायझेस SEMS',
+    crm_subtitle: 'SEMS - कार्य व्यवस्थापन आणि व्यवसाय प्रणाली',
+    check_in: 'चेक इन',
+    check_out: 'चेक आउट',
+    checked_in: 'चेक इन झाले',
+    mark_check_in: 'चेक-इन नोंदवा',
+    mark_check_out: 'चेक-आउट नोंदवा',
+    role_admin: 'अॅडमिन',
+    role_employee: 'टीम सदस्य',
+    logout: 'लॉगआउट',
+    my_profile: 'माझे प्रोफाइल',
+    system_settings: 'सिस्टम सेटिंग्ज',
+    notifications: 'सूचना',
+    all_caught_up: 'सर्व सूचना वाचल्या गेल्या आहेत.',
+    mark_all_read: 'सर्व वाचले म्हणून चिन्हांकित करा',
+    mark_read: 'वाचले म्हणून चिन्हांकित करा',
+
+    // Navigation Items
+    nav_dashboard: 'डॅशबोर्ड',
+    nav_employees: 'टीम सदस्य (Team Members)',
+    nav_attendance: 'दैनिक उपस्थिती',
+    nav_leave: 'रजा व्यवस्थापन',
+    nav_tasks: 'कार्ये / कामे',
+    nav_leads: 'लीड्स आणि चौकशी',
+    nav_products: 'उत्पादन डेटाशीट्स',
+    nav_reports: 'अहवाल आणि वेतन',
+    nav_notifications: 'सूचना',
+    nav_messages: 'संदेश',
+    nav_settings: 'सेटिंग्ज',
+
+    // Actions & Buttons
+    btn_add_employee: 'टीम सदस्य जोडा',
+    btn_edit_employee: 'टीम सदस्य संपादित करा',
+    btn_deactivate_user: 'सदस्य निष्क्रिय करा',
+    btn_reactivate_user: 'सदस्य सक्रिय करा',
+    btn_create_task: 'नवीन कार्य जोडा',
+    btn_add_lead: 'नवीन लीड जोडा',
+    btn_apply_leave: 'रजेसाठी अर्ज करा',
+    btn_upload_document: 'डेटाशीट अपलोड करा',
+    btn_replace_document: 'दस्तऐवज बदला',
+    btn_download_report: 'पेरोल अहवाल डाउनलोड करा',
+    btn_download_csv: 'CSV डाउनलोड करा',
+    btn_download_excel: 'एक्सेल डाउनलोड करा',
+    btn_save: 'बदल जतन करा',
+    btn_cancel: 'रद्द करा',
+    btn_confirm: 'पुष्टी करा',
+    btn_approve: 'मंजूर करा',
+    btn_reject: 'नाकारा',
+    btn_send_message: 'संदेश पाठवा',
+
+    // Attendance & Statuses
+    status_present: 'हजर',
+    status_absent: 'गैरहजर',
+    status_late: 'उशीरा',
+    status_half_day: 'अर्धा दिवस',
+    status_on_leave: 'रजेवर',
+    status_holiday: 'सुट्टी',
+    status_weekly_off: 'साप्ताहिक सुट्टी',
+
+    // Empty States
+    empty_tasks: 'कोणतीही कामे नियुक्त केलेली नाहीत.',
+    empty_leads: 'कोणतीही लीड सापडली नाही.',
+    empty_notifications: 'सर्व सूचना वाचल्या आहेत.',
+    empty_documents: 'कोणतीही उत्पादन कागदपत्रे अपलोड केलेली नाहीत.',
+    empty_messages: 'कोणताही संवाद निवडलेला नाही.',
+    empty_leaves: 'कोणताही रजेचा अर्ज नाही.',
+
+    // Permissions
+    permission_denied: 'तुम्हाला ही कृती करण्याची परवानगी नाही.',
+    access_restricted: 'हे वैशिष्ट्य सध्या तुमच्या खात्यासाठी सक्रिय नाही. कृपया प्रशासकाशी संपर्क साधा.',
+  },
+};
