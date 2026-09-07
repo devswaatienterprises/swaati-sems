@@ -27,6 +27,7 @@ export default function ProductsPage() {
     products,
     uploadProductDocument,
     replaceProductDocument,
+    getProductDocumentSignedUrl,
     deleteProductDocument,
     t,
   } = useCrm();
@@ -72,21 +73,35 @@ export default function ProductsPage() {
     setIsModalOpen(true);
   };
 
-  const handleSaveDoc = (productId, docId, docData) => {
+  const handleSaveDoc = async (productId, docId, docData, file = null) => {
     if (docId) {
-      replaceProductDocument(productId, docId, docData);
-      setToastMessage(`Document "${docData.fileName}" updated to ${docData.version}!`);
+      await replaceProductDocument(productId, docId, docData, file);
+      setToastMessage(`Document "${docData.fileName || docData.title}" updated to ${docData.version}!`);
     } else {
-      uploadProductDocument(productId, docData);
-      setToastMessage(`New document "${docData.fileName}" uploaded successfully!`);
+      await uploadProductDocument(productId, docData, file);
+      setToastMessage(`New document "${docData.fileName || docData.title}" uploaded successfully!`);
     }
     setExpandedProductIds((prev) => new Set(prev).add(productId));
     setTimeout(() => setToastMessage(''), 4000);
   };
 
-  const handleDownloadDoc = (doc, e) => {
+  const handleDownloadDoc = async (productId, doc, e) => {
     if (e) e.stopPropagation();
-    setToastMessage(`Downloading ${doc.fileName} (${doc.version})...`);
+    setToastMessage(`Generating secure download link for ${doc.fileName || doc.title}...`);
+    try {
+      const signedUrl = await getProductDocumentSignedUrl(productId, doc.id);
+      if (signedUrl) {
+        window.open(signedUrl, '_blank', 'noopener,noreferrer');
+        setToastMessage(`Opened ${doc.fileName || doc.title} in new tab.`);
+      } else if (doc.fileUrl) {
+        window.open(doc.fileUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        setToastMessage('Download link unavailable.');
+      }
+    } catch (err) {
+      console.error(err);
+      setToastMessage('Failed to get download URL.');
+    }
     setTimeout(() => setToastMessage(''), 3000);
   };
 
@@ -304,8 +319,8 @@ export default function ProductsPage() {
                                       {/* Document Action Buttons in Detail View */}
                                       <div className="flex items-center gap-2 self-end sm:self-auto">
                                         <button
-                                          onClick={(e) => handleDownloadDoc(doc, e)}
-                                          className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-colors shadow-2xs"
+                                          onClick={(e) => handleDownloadDoc(prod.id, doc, e)}
+                                          className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
                                         >
                                           <Download className="w-3.5 h-3.5 text-blue-600" />
                                           <span>Download</span>

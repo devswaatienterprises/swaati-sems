@@ -11,7 +11,7 @@ export default function TaskModal({ isOpen, onClose, onSave, initialData = null 
     title: '',
     description: '',
     assignedTo: employees.find((e) => e.status === 'Active')?.name || '',
-    assignedToId: employees.find((e) => e.status === 'Active')?.id || '',
+    assignedToId: employees.find((e) => e.status === 'Active')?.realId || employees.find((e) => e.status === 'Active')?.id || '',
     priority: 'Medium',
     status: 'To Do',
     startDate: new Date().toISOString().split('T')[0],
@@ -25,7 +25,7 @@ export default function TaskModal({ isOpen, onClose, onSave, initialData = null 
         title: initialData.title || '',
         description: initialData.description || '',
         assignedTo: initialData.assignedTo || employees.find((e) => e.status === 'Active')?.name || '',
-        assignedToId: initialData.assignedToId || employees.find((e) => e.status === 'Active')?.id || '',
+        assignedToId: initialData.assignedToRealId || initialData.assignedToId || employees.find((e) => e.status === 'Active')?.realId || employees.find((e) => e.status === 'Active')?.id || '',
         priority: initialData.priority || 'Medium',
         status: initialData.status || 'To Do',
         startDate: initialData.startDate
@@ -41,7 +41,7 @@ export default function TaskModal({ isOpen, onClose, onSave, initialData = null 
         title: '',
         description: '',
         assignedTo: employees.find((e) => e.status === 'Active')?.name || '',
-        assignedToId: employees.find((e) => e.status === 'Active')?.id || '',
+        assignedToId: employees.find((e) => e.status === 'Active')?.realId || employees.find((e) => e.status === 'Active')?.id || '',
         priority: 'Medium',
         status: 'To Do',
         startDate: new Date().toISOString().split('T')[0],
@@ -58,7 +58,7 @@ export default function TaskModal({ isOpen, onClose, onSave, initialData = null 
     setFormData({
       ...formData,
       assignedTo: empName,
-      assignedToId: emp?.id || '',
+      assignedToId: emp?.realId || emp?.id || '',
     });
   };
 

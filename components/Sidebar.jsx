@@ -153,10 +153,10 @@ export default function Sidebar({ isOpen, onClose }) {
         <div className="shrink-0 px-5 py-3 bg-slate-800/60 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2 truncate">
             <div className="w-6 h-6 rounded-full bg-slate-700 text-slate-200 text-[10px] font-bold flex items-center justify-center">
-              {currentUser.avatar || 'SE'}
+              {currentUser?.avatar || 'SE'}
             </div>
             <span className="text-xs font-semibold text-slate-200 truncate">
-              {currentUser.name}
+              {currentUser?.name || 'Staff User'}
             </span>
           </div>
           <span
@@ -166,7 +166,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
             }`}
           >
-            {currentRole}
+            {currentRole || 'STAFF'}
           </span>
         </div>
 

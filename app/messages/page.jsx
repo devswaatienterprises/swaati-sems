@@ -18,6 +18,9 @@ import {
   Sparkles,
   ShieldCheck,
   Info,
+  Paperclip,
+  FileText,
+  Download,
 } from 'lucide-react';
 
 export default function MessagesPage() {
@@ -27,7 +30,9 @@ export default function MessagesPage() {
     messages,
     groups = [],
     sendMessage,
+    getMessageAttachmentSignedUrl,
     createGroup,
+    fetchConversationMessages,
     markConversationRead,
     markGroupRead,
     t,
@@ -36,8 +41,10 @@ export default function MessagesPage() {
   // Active chat selection: { type: 'direct' | 'group', id: string }
   const [selectedChat, setSelectedChat] = useState(null);
   const [messageText, setMessageText] = useState('');
+  const [attachmentFile, setAttachmentFile] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [tabFilter, setTabFilter] = useState('all'); // 'all' | 'direct' | 'groups'
+  const fileInputRef = useRef(null);
 
   // Modals
   const [isNewMessageModalOpen, setIsNewMessageModalOpen] = useState(false);
@@ -56,7 +63,7 @@ export default function MessagesPage() {
 
   // Active team members (excluding current user for direct chat recipient choices)
   const activeEmployees = employees.filter((e) => e.status === 'Active');
-  const otherActiveEmployees = activeEmployees.filter((e) => e.id !== currentUser.id);
+  const otherActiveEmployees = activeEmployees.filter((e) => e.id !== currentUser?.id);
 
   // Default selection on initial load if none selected
   useEffect(() => {
@@ -68,6 +75,13 @@ export default function MessagesPage() {
       }
     }
   }, [employees, groups]);
+
+  // Fetch full conversation messages when selected chat changes
+  useEffect(() => {
+    if (selectedChat?.id && fetchConversationMessages) {
+      fetchConversationMessages(selectedChat.id, selectedChat.type === 'group');
+    }
+  }, [selectedChat]);
 
   // Scroll to bottom of message thread on update
   useEffect(() => {
@@ -89,27 +103,30 @@ export default function MessagesPage() {
     if (!selectedChat) return false;
     if (selectedChat.type === 'direct') {
       return (
-        (m.senderId === currentUser.id && m.recipientId === selectedChat.id) ||
-        (m.senderId === selectedChat.id && m.recipientId === currentUser.id)
+        (m.senderId === currentUser?.id && m.recipientId === selectedChat.id) ||
+        (m.senderId === selectedChat.id && (m.recipientId === currentUser?.id || !m.recipientId)) ||
+        (m.conversationId && m.conversationId === selectedChat.id)
       );
     } else if (selectedChat.type === 'group') {
-      return m.groupId === selectedChat.id;
+      return m.groupId === selectedChat.id || m.conversationId === selectedChat.id;
     }
     return false;
   });
 
   // Handle send message in active thread
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!messageText.trim() || !selectedChat) return;
+    if ((!messageText.trim() && !attachmentFile) || !selectedChat) return;
 
     if (selectedChat.type === 'direct') {
-      sendMessage(selectedChat.id, messageText.trim(), false);
+      await sendMessage(selectedChat.id, messageText.trim(), false, attachmentFile);
     } else if (selectedChat.type === 'group') {
-      sendMessage(selectedChat.id, messageText.trim(), true);
+      await sendMessage(selectedChat.id, messageText.trim(), true, attachmentFile);
     }
 
     setMessageText('');
+    setAttachmentFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   // Handle New Message Modal submission
@@ -124,11 +141,11 @@ export default function MessagesPage() {
   };
 
   // Handle Create Group Modal submission
-  const handleCreateNewGroup = (e) => {
+  const handleCreateNewGroup = async (e) => {
     e.preventDefault();
     if (!groupName.trim() || selectedMemberIds.length === 0) return;
 
-    const newGrp = createGroup(groupName.trim(), selectedMemberIds, groupDescription.trim());
+    const newGrp = await createGroup(groupName.trim(), selectedMemberIds, groupDescription.trim());
     setGroupName('');
     setGroupDescription('');
     setSelectedMemberIds([]);
@@ -472,6 +489,29 @@ export default function MessagesPage() {
                             {m.text}
                           </div>
 
+                          {m.attachmentPath && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const signedUrl = await getMessageAttachmentSignedUrl(m.id);
+                                if (signedUrl) {
+                                  window.open(signedUrl, '_blank', 'noopener,noreferrer');
+                                } else {
+                                  alert('Attachment link could not be generated.');
+                                }
+                              }}
+                              className={`mt-1 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold text-[11px] transition-colors cursor-pointer ${
+                                isMe
+                                  ? 'bg-blue-700/80 hover:bg-blue-700 text-white'
+                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
+                              }`}
+                            >
+                              <Paperclip className="w-3 h-3 shrink-0" />
+                              <span className="truncate max-w-[160px]">View Attachment</span>
+                              <Download className="w-3 h-3 ml-1 opacity-70 shrink-0" />
+                            </button>
+                          )}
+
                           <div
                             className={`text-[10px] flex items-center justify-end gap-1 ${
                               isMe ? 'text-blue-200' : 'text-slate-400'
@@ -491,27 +531,66 @@ export default function MessagesPage() {
               {/* Message Input Bar */}
               <form
                 onSubmit={handleSendMessage}
-                className="p-3.5 px-6 border-t border-slate-200 bg-white flex items-center gap-3"
+                className="p-3.5 px-6 border-t border-slate-200 bg-white flex flex-col gap-2"
               >
-                <input
-                  type="text"
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  placeholder={
-                    selectedChat.type === 'group'
-                      ? `Message ${activeGroup?.name || 'group'}...`
-                      : `Message ${activeRecipient?.name || 'team member'}...`
-                  }
-                  className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
-                />
-                <button
-                  type="submit"
-                  disabled={!messageText.trim()}
-                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-xs flex items-center gap-1.5 transition-colors shrink-0"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Send</span>
-                </button>
+                {attachmentFile && (
+                  <div className="flex items-center justify-between bg-blue-50 border border-blue-200 text-blue-800 px-3 py-1.5 rounded-lg text-xs font-semibold">
+                    <span className="flex items-center gap-1.5 truncate">
+                      <Paperclip className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{attachmentFile.name}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAttachmentFile(null);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }}
+                      className="text-slate-400 hover:text-slate-700 p-1"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        setAttachmentFile(e.target.files[0]);
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition-colors shrink-0 cursor-pointer"
+                    title="Attach File (PDF, Image)"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </button>
+                  <input
+                    type="text"
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    placeholder={
+                      selectedChat.type === 'group'
+                        ? `Message ${activeGroup?.name || 'group'}...`
+                        : `Message ${activeRecipient?.name || 'team member'}...`
+                    }
+                    className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!messageText.trim() && !attachmentFile}
+                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-xs flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Send</span>
+                  </button>
+                </div>
               </form>
             </>
           ) : (

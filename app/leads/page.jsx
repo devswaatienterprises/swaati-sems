@@ -81,49 +81,51 @@ export default function LeadsPage() {
 
   // Helper for Source Badge
   const renderSourceBadge = (source) => {
-    switch (source) {
-      case 'Website':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
-            <Globe2 className="w-2.5 h-2.5" />
-            Website
-          </span>
-        );
-      case 'WhatsApp':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <MessageCircle className="w-2.5 h-2.5" />
-            WhatsApp
-          </span>
-        );
-      case 'Call':
-      case 'Phone':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-            <Phone className="w-2.5 h-2.5" />
-            Call
-          </span>
-        );
-      case 'Referral':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-            Referral
-          </span>
-        );
-      case 'Email':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-            <Mail className="w-2.5 h-2.5" />
-            Email
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-            {source || 'Direct'}
-          </span>
-        );
+    const s = (source || '').toLowerCase();
+    if (s === 'website') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+          <Globe2 className="w-2.5 h-2.5" />
+          Website
+        </span>
+      );
     }
+    if (s === 'whatsapp') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <MessageCircle className="w-2.5 h-2.5" />
+          WhatsApp
+        </span>
+      );
+    }
+    if (s === 'call' || s === 'phone') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+          <Phone className="w-2.5 h-2.5" />
+          Call
+        </span>
+      );
+    }
+    if (s === 'referral') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+          Referral
+        </span>
+      );
+    }
+    if (s === 'email') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+          <Mail className="w-2.5 h-2.5" />
+          Email
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+        {source || 'Direct'}
+      </span>
+    );
   };
 
   // Filter & Search
@@ -144,7 +146,9 @@ export default function LeadsPage() {
         (l.assignedTo || '').toLowerCase().includes(term);
 
       const matchesStatus = statusFilter === 'ALL' || l.status === statusFilter;
-      const matchesSource = sourceFilter === 'ALL' || l.source === sourceFilter;
+      const matchesSource =
+        sourceFilter === 'ALL' ||
+        (l.source || '').toLowerCase() === sourceFilter.toLowerCase();
       const matchesAssignee = assigneeFilter === 'ALL' || l.assignedTo === assigneeFilter;
 
       return matchesSearch && matchesStatus && matchesSource && matchesAssignee;

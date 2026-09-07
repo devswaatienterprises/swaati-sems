@@ -7,12 +7,12 @@ import { Eye, EyeOff, Lock, Mail, User, ShieldCheck, ArrowRight, AlertCircle } f
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, switchUser, employees } = useCrm();
+  const { login } = useCrm();
 
   // Login Mode: 'ADMIN' (Email) | 'EMPLOYEE' (User ID)
   const [loginMode, setLoginMode] = useState('ADMIN');
-  const [credential, setCredential] = useState('admin@swaatienterprises.in');
-  const [password, setPassword] = useState('Admin@123');
+  const [credential, setCredential] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -20,13 +20,8 @@ export default function LoginPage() {
   const handleModeChange = (mode) => {
     setLoginMode(mode);
     setErrorMessage('');
-    if (mode === 'ADMIN') {
-      setCredential('admin@swaatienterprises.in');
-      setPassword('Admin@123');
-    } else {
-      setCredential('amit.v');
-      setPassword('Employee@123');
-    }
+    setCredential('');
+    setPassword('');
   };
 
   const handleFormSubmit = async (e) => {
@@ -40,24 +35,7 @@ export default function LoginPage() {
     if (result.success) {
       router.push('/dashboard');
     } else {
-      setErrorMessage(result.message || 'Invalid credentials provided.');
-    }
-  };
-
-  const handleQuickDemo = async (userId) => {
-    setErrorMessage('');
-    setIsSubmitting(true);
-    const pass = userId === 'admin' ? 'Admin@123' : 'Employee@123';
-    const mode = userId === 'admin' ? 'ADMIN' : 'EMPLOYEE';
-    const cred = userId === 'admin' ? 'admin@swaatienterprises.in' : userId;
-
-    const result = await login(cred, pass, mode);
-    setIsSubmitting(false);
-
-    if (result.success) {
-      router.push('/dashboard');
-    } else {
-      setErrorMessage(result.message || 'Sign in failed.');
+      setErrorMessage(result.message || 'Invalid credentials provided. Please check and try again.');
     }
   };
 
@@ -190,36 +168,6 @@ export default function LoginPage() {
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-
-          {/* Quick Demo Access Links */}
-          <div className="mt-6 pt-5 border-t border-slate-700/80">
-            <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-2.5 text-center">
-              Demo Accounts:
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('admin')}
-                className="p-2 bg-purple-950/40 hover:bg-purple-900/50 border border-purple-500/30 rounded-lg text-[11px] font-bold text-purple-300 text-center transition-colors"
-              >
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('rajesh.s')}
-                className="p-2 bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/30 rounded-lg text-[11px] font-bold text-blue-300 text-center transition-colors"
-              >
-                Sales Exec
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('amit.v')}
-                className="p-2 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/30 rounded-lg text-[11px] font-bold text-emerald-300 text-center transition-colors"
-              >
-                Site Engr
-              </button>
-            </div>
-          </div>
         </div>
 
         <p className="mt-6 text-center text-xs text-slate-500 font-medium">

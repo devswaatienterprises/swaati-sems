@@ -29,19 +29,18 @@ export default function ProductDocModal({
     if (e.target.files?.[0]) {
       const file = e.target.files[0];
       setSelectedFile(file);
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
       setFormData({
         ...formData,
         fileName: file.name,
         fileSize: `${sizeMB} MB`,
-        fileUrl: URL.createObjectURL(file),
       });
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(product.id, existingDoc?.id, formData);
+    onSave(product.id, existingDoc?.id, formData, selectedFile);
     onClose();
   };
 

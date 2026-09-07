@@ -28,9 +28,11 @@ export default function EmployeeProfilePage({ params }) {
     leaves,
     deactivateEmployee,
     reactivateEmployee,
+    getEmployeeKycSignedUrls,
   } = useCrm();
 
   const [activeTab, setActiveTab] = useState('overview');
+  const [kycLoading, setKycLoading] = useState(false);
 
   const empId = params.id;
   const employee = employees.find((e) => e.id === empId || e.userId === empId) || employees[0];
@@ -195,18 +197,63 @@ export default function EmployeeProfilePage({ params }) {
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-2">
-              <div className="border border-slate-200 rounded-lg p-2 text-center bg-slate-50">
-                <div className="text-[10px] font-bold text-slate-500 mb-1">Front Image</div>
-                <div className="h-16 bg-slate-200/60 rounded flex items-center justify-center font-mono text-[10px] text-slate-400">
-                  [Front Scan]
+              <button
+                type="button"
+                onClick={async () => {
+                  const docId = employee.documents?.[0]?.id || 'kyc';
+                  setKycLoading(true);
+                  try {
+                    const data = await getEmployeeKycSignedUrls(employee.id, docId);
+                    if (data?.frontSignedUrl) {
+                      window.open(data.frontSignedUrl, '_blank', 'noopener,noreferrer');
+                    } else if (employee.idCardFrontUrl) {
+                      window.open(employee.idCardFrontUrl, '_blank', 'noopener,noreferrer');
+                    } else {
+                      alert('Front image not available');
+                    }
+                  } catch (e) {
+                    console.error(e);
+                  } finally {
+                    setKycLoading(false);
+                  }
+                }}
+                disabled={kycLoading}
+                className="border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 rounded-lg p-3 text-center bg-slate-50 transition-colors group cursor-pointer"
+              >
+                <div className="text-[10px] font-bold text-slate-600 mb-1">ID Card Front</div>
+                <div className="text-xs font-semibold text-blue-600 group-hover:underline flex items-center justify-center gap-1">
+                  View Secure Scan ↗
                 </div>
-              </div>
-              <div className="border border-slate-200 rounded-lg p-2 text-center bg-slate-50">
-                <div className="text-[10px] font-bold text-slate-500 mb-1">Back Image</div>
-                <div className="h-16 bg-slate-200/60 rounded flex items-center justify-center font-mono text-[10px] text-slate-400">
-                  [Back Scan]
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  const docId = employee.documents?.[0]?.id || 'kyc';
+                  setKycLoading(true);
+                  try {
+                    const data = await getEmployeeKycSignedUrls(employee.id, docId);
+                    if (data?.backSignedUrl) {
+                      window.open(data.backSignedUrl, '_blank', 'noopener,noreferrer');
+                    } else if (employee.idCardBackUrl) {
+                      window.open(employee.idCardBackUrl, '_blank', 'noopener,noreferrer');
+                    } else {
+                      alert('Back image not available');
+                    }
+                  } catch (e) {
+                    console.error(e);
+                  } finally {
+                    setKycLoading(false);
+                  }
+                }}
+                disabled={kycLoading}
+                className="border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 rounded-lg p-3 text-center bg-slate-50 transition-colors group cursor-pointer"
+              >
+                <div className="text-[10px] font-bold text-slate-600 mb-1">ID Card Back</div>
+                <div className="text-xs font-semibold text-blue-600 group-hover:underline flex items-center justify-center gap-1">
+                  View Secure Scan ↗
                 </div>
-              </div>
+              </button>
             </div>
           </div>
         </div>

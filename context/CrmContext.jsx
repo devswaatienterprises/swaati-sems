@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useRouter } from 'next/navigation';
 import { apiRequest } from '@/utils/api';
 import { translations } from '@/utils/translations';
-import { DEFAULT_PERMISSIONS, INITIAL_GROUPS, INITIAL_MESSAGES } from './mockData';
+import { DEFAULT_PERMISSIONS } from './mockData';
 
 const CrmContext = createContext();
 
@@ -17,18 +17,19 @@ export function CrmProvider({ children }) {
   // Auth State
   const [authToken, setAuthToken] = useState(null);
   const [currentUser, setCurrentUser] = useState({
-    id: 'EMP-101',
-    userId: 'admin',
-    name: 'Shailendra Patil',
-    email: 'admin@swaatienterprises.in',
-    role: 'ADMIN',
-    department: 'Executive Management',
-    designation: 'Founder & Managing Director',
+    id: '',
+    realId: '',
+    userId: '',
+    name: '',
+    email: '',
+    role: '',
+    department: '',
+    designation: '',
     status: 'Active',
-    avatar: 'SP',
+    avatar: 'SE',
     permissions: DEFAULT_PERMISSIONS,
   });
-  const [currentRole, setCurrentRole] = useState('ADMIN');
+  const [currentRole, setCurrentRole] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
@@ -40,8 +41,8 @@ export function CrmProvider({ children }) {
   const [leads, setLeads] = useState([]);
   const [products, setProducts] = useState([]);
   const [notifications, setNotifications] = useState([]);
-  const [messages, setMessages] = useState(INITIAL_MESSAGES);
-  const [groups, setGroups] = useState(INITIAL_GROUPS);
+  const [messages, setMessages] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [systemSettings, setSystemSettings] = useState({
     officeStartTime: '10:00 AM',
     officeEndTime: '06:30 PM',
@@ -313,6 +314,7 @@ export function CrmProvider({ children }) {
         notifRes,
         settRes,
         auditRes,
+        convoRes,
       ] = await Promise.all([
         apiRequest('/employees'),
         apiRequest('/attendance'),
@@ -323,6 +325,7 @@ export function CrmProvider({ children }) {
         apiRequest('/notifications'),
         apiRequest('/settings'),
         apiRequest('/audit'),
+        apiRequest('/messages/conversations'),
       ]);
 
       if (empRes?.success && empRes.data) {
@@ -367,6 +370,73 @@ export function CrmProvider({ children }) {
             time: log.createdAt ? new Date(log.createdAt).toLocaleString() : '',
           }))
         );
+      }
+      if (convoRes?.success && Array.isArray(convoRes.data)) {
+        const convos = convoRes.data;
+        const dbGroups = convos
+          .filter((c) => c.isGroup)
+          .map((c) => ({
+            id: c.id,
+            name: c.title || 'Team Group',
+            description: c.title || 'Team Group',
+            memberIds: (c.members || []).map(
+              (m) => m.user?.employee?.employeeCode || m.user?.employee?.id || m.userId
+            ),
+            createdBy: c.members?.[0]?.user?.employee?.name || 'Admin',
+            createdAt: c.createdAt ? c.createdAt.split('T')[0] : '',
+            avatar:
+              (c.title || 'GP')
+                .split(' ')
+                .map((w) => w[0])
+                .slice(0, 2)
+                .join('')
+                .toUpperCase() || 'GP',
+          }));
+        setGroups(dbGroups);
+
+        const dbMessages = [];
+        convos.forEach((c) => {
+          if (c.messages && c.messages.length > 0) {
+            c.messages.forEach((m) => {
+              const otherMember = c.members?.find((mb) => mb.userId !== m.senderId);
+              dbMessages.push({
+                id: m.id,
+                conversationId: c.id,
+                groupId: c.isGroup ? c.id : null,
+                groupName: c.isGroup ? c.title : null,
+                senderId:
+                  m.sender?.employee?.employeeCode ||
+                  m.sender?.employee?.id ||
+                  m.senderId,
+                senderName:
+                  m.sender?.employee?.name || m.sender?.email?.split('@')[0] || 'User',
+                senderAvatar:
+                  m.sender?.employee?.avatar ||
+                  m.sender?.employee?.name?.slice(0, 2).toUpperCase() ||
+                  'TM',
+                recipientId: !c.isGroup
+                  ? otherMember?.user?.employee?.employeeCode ||
+                    otherMember?.user?.employee?.id ||
+                    otherMember?.userId ||
+                    ''
+                  : '',
+                recipientName: otherMember?.user?.employee?.name || 'Team Member',
+                text: m.content,
+                time: m.createdAt
+                  ? new Date(m.createdAt).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  : 'Just now',
+                timestamp: m.createdAt,
+                isRead: !!m.isRead,
+              });
+            });
+          }
+        });
+        if (dbMessages.length > 0) {
+          setMessages(dbMessages);
+        }
       }
     } catch (err) {
       console.error('[CrmContext Fetch Error]:', err);
@@ -487,7 +557,7 @@ export function CrmProvider({ children }) {
   // ----------------------------------------------------
   // EMPLOYEE MANAGEMENT (Persistent Database Sync)
   // ----------------------------------------------------
-  const addEmployee = async (empData) => {
+  const addEmployee = async (empData, frontImageFile = null, backImageFile = null) => {
     const res = await apiRequest('/employees', 'POST', {
       name: empData.name,
       email: empData.email,
@@ -504,9 +574,29 @@ export function CrmProvider({ children }) {
     });
 
     if (res?.success && res.data) {
-      const normalized = normalizeEmployee(res.data);
+      const createdEmployee = res.data;
+      // Upload KYC files to R2 if provided
+      if (frontImageFile || backImageFile) {
+        const kycFormData = new FormData();
+        kycFormData.append('documentType', empData.idCardType || 'Aadhaar Card');
+        kycFormData.append('documentNumber', empData.idCardNumber || 'KYC-DOC');
+        if (frontImageFile) kycFormData.append('frontImage', frontImageFile);
+        if (backImageFile) kycFormData.append('backImage', backImageFile);
+
+        await apiRequest(`/employees/${createdEmployee.id}/documents`, 'POST', kycFormData);
+      }
+
+      const normalized = normalizeEmployee(createdEmployee);
       setEmployees((prev) => [normalized, ...prev]);
       return normalized;
+    }
+    return null;
+  };
+
+  const getEmployeeKycSignedUrls = async (empId, docId) => {
+    const res = await apiRequest(`/employees/${empId}/documents/${docId}/signed-url`);
+    if (res?.success && res.data) {
+      return res.data;
     }
     return null;
   };
@@ -777,16 +867,27 @@ export function CrmProvider({ children }) {
     return null;
   };
 
-  const uploadProductDocument = async (productId, docData) => {
-    const res = await apiRequest(`/products/${productId}/documents`, 'POST', {
-      title: docData.title || 'Technical Datasheet (TDS)',
-      documentType: docData.docType || 'datasheet',
-      fileName: docData.fileName,
-      fileSize: docData.fileSize || '1.2 MB',
-      version: docData.version || 'v1.0',
-      fileUrl: docData.fileUrl || '/datasheets/sample.pdf',
-      uploadedBy: currentUser.name,
-    });
+  const uploadProductDocument = async (productId, docData, file = null) => {
+    let payload;
+    if (file) {
+      payload = new FormData();
+      payload.append('file', file);
+      payload.append('title', docData.title || 'Technical Datasheet (TDS)');
+      payload.append('documentType', docData.docType || 'datasheet');
+      payload.append('version', docData.version || 'v1.0');
+    } else {
+      payload = {
+        title: docData.title || 'Technical Datasheet (TDS)',
+        documentType: docData.docType || 'datasheet',
+        fileName: docData.fileName,
+        fileSize: docData.fileSize || '1.2 MB',
+        version: docData.version || 'v1.0',
+        fileUrl: docData.fileUrl || '/datasheets/sample.pdf',
+        uploadedBy: currentUser?.name || 'Admin',
+      };
+    }
+
+    const res = await apiRequest(`/products/${productId}/documents`, 'POST', payload);
 
     if (res?.success && res.data) {
       const newDoc = {
@@ -799,6 +900,7 @@ export function CrmProvider({ children }) {
         uploadedBy: res.data.uploadedBy,
         uploadedDate: res.data.createdAt ? res.data.createdAt.split('T')[0] : '',
         fileUrl: res.data.fileUrl,
+        storagePath: res.data.storagePath,
       };
 
       setProducts((prev) =>
@@ -806,18 +908,30 @@ export function CrmProvider({ children }) {
           p.id === productId ? { ...p, documents: [...(p.documents || []), newDoc] } : p
         )
       );
+      return newDoc;
     }
+    return null;
   };
 
-  const replaceProductDocument = async (productId, docId, newDocData) => {
-    const res = await apiRequest(`/products/${productId}/documents/${docId}`, 'PUT', {
-      title: newDocData.title,
-      fileName: newDocData.fileName,
-      version: newDocData.version,
-      fileSize: newDocData.fileSize,
-      fileUrl: newDocData.fileUrl,
-      uploadedBy: currentUser.name,
-    });
+  const replaceProductDocument = async (productId, docId, newDocData, file = null) => {
+    let payload;
+    if (file) {
+      payload = new FormData();
+      payload.append('file', file);
+      payload.append('title', newDocData.title);
+      payload.append('version', newDocData.version);
+    } else {
+      payload = {
+        title: newDocData.title,
+        fileName: newDocData.fileName,
+        version: newDocData.version,
+        fileSize: newDocData.fileSize,
+        fileUrl: newDocData.fileUrl,
+        uploadedBy: currentUser?.name || 'Admin',
+      };
+    }
+
+    const res = await apiRequest(`/products/${productId}/documents/${docId}`, 'PUT', payload);
 
     if (res?.success && res.data) {
       setProducts((prev) =>
@@ -834,6 +948,7 @@ export function CrmProvider({ children }) {
                     version: res.data.version,
                     fileSize: res.data.fileSize,
                     fileUrl: res.data.fileUrl,
+                    storagePath: res.data.storagePath,
                     uploadedBy: res.data.uploadedBy,
                     uploadedDate: new Date().toISOString().split('T')[0],
                   }
@@ -842,7 +957,17 @@ export function CrmProvider({ children }) {
           };
         })
       );
+      return res.data;
     }
+    return null;
+  };
+
+  const getProductDocumentSignedUrl = async (productId, docId) => {
+    const res = await apiRequest(`/products/${productId}/documents/${docId}/signed-url`);
+    if (res?.success && (res.data?.signedUrl || res.data?.url)) {
+      return res.data.signedUrl || res.data.url;
+    }
+    return null;
   };
 
   const deleteProductDocument = async (productId, docId) => {
@@ -859,69 +984,152 @@ export function CrmProvider({ children }) {
   // ----------------------------------------------------
   // INTERNAL MESSAGING (Database Persistence + Direct & Groups)
   // ----------------------------------------------------
-  const sendMessage = async (recipientOrGroupId, text, isGroup = false) => {
-    let newMsg;
-    if (isGroup) {
-      const group = groups.find((g) => g.id === recipientOrGroupId);
-      newMsg = {
-        id: `MSG-G-${Date.now()}`,
-        groupId: recipientOrGroupId,
-        groupName: group?.name || 'Team Group',
-        senderId: currentUser.id,
-        senderName: currentUser.name,
-        senderAvatar: currentUser.avatar || currentUser.name.slice(0, 2).toUpperCase(),
-        text,
+  const fetchConversationMessages = async (targetId, isGroup = false) => {
+    try {
+      const endpoint = isGroup
+        ? `/messages/conversations/${targetId}`
+        : `/messages/${targetId}`;
+      const res = await apiRequest(endpoint);
+      if (res?.success && Array.isArray(res.data)) {
+        const normalized = res.data.map((m) => ({
+          id: m.id,
+          conversationId: m.conversationId,
+          groupId: isGroup ? targetId : null,
+          groupName: isGroup ? groups.find((g) => g.id === targetId)?.name : null,
+          senderId:
+            m.sender?.employee?.employeeCode ||
+            m.sender?.employee?.id ||
+            m.senderId,
+          senderName:
+            m.sender?.employee?.name || m.sender?.email?.split('@')[0] || 'User',
+          senderAvatar:
+            m.sender?.employee?.avatar ||
+            m.sender?.employee?.name?.slice(0, 2).toUpperCase() ||
+            'TM',
+          recipientId: !isGroup ? targetId : '',
+          recipientName: 'Team Member',
+          text: m.content,
+          time: m.createdAt
+            ? new Date(m.createdAt).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+            : 'Just now',
+          timestamp: m.createdAt,
+          isRead: !!m.isRead,
+        }));
+        setMessages((prev) => {
+          const otherMsgs = prev.filter((existing) => {
+            if (isGroup) return existing.groupId !== targetId;
+            return !(
+              (existing.senderId === currentUser?.id && existing.recipientId === targetId) ||
+              (existing.senderId === targetId && existing.recipientId === currentUser?.id)
+            );
+          });
+          return [...otherMsgs, ...normalized];
+        });
+      }
+    } catch (err) {
+      console.error('[CrmContext fetchConversationMessages Error]:', err);
+    }
+  };
+
+  const sendMessage = async (recipientOrGroupId, text, isGroup = false, attachmentFile = null) => {
+    try {
+      let payload;
+      if (attachmentFile) {
+        payload = new FormData();
+        payload.append('attachment', attachmentFile);
+        payload.append('content', text || attachmentFile.name);
+        if (isGroup) {
+          payload.append('conversationId', recipientOrGroupId);
+        } else {
+          payload.append('recipientId', recipientOrGroupId);
+        }
+      } else {
+        payload = isGroup
+          ? { conversationId: recipientOrGroupId, message: text }
+          : { recipientId: recipientOrGroupId, message: text };
+      }
+
+      const res = await apiRequest('/messages', 'POST', payload);
+      const created = res?.data;
+
+      const group = isGroup ? groups.find((g) => g.id === recipientOrGroupId) : null;
+      const recipient = !isGroup ? employees.find((e) => e.id === recipientOrGroupId) : null;
+
+      const newMsg = {
+        id: created?.id || `MSG-${Date.now()}`,
+        conversationId: created?.conversationId || (isGroup ? recipientOrGroupId : null),
+        groupId: isGroup ? recipientOrGroupId : null,
+        groupName: group?.name || (isGroup ? 'Team Group' : null),
+        senderId: currentUser?.id,
+        senderName: currentUser?.name || 'User',
+        senderAvatar: currentUser?.avatar || currentUser?.name?.slice(0, 2).toUpperCase() || 'SE',
+        recipientId: !isGroup ? recipientOrGroupId : '',
+        recipientName: recipient?.name || 'Team Member',
+        text: text || attachmentFile?.name || '',
+        attachmentPath: created?.attachmentPath || null,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         timestamp: new Date().toISOString(),
         isRead: true,
       };
-    } else {
-      const recipient = employees.find((e) => e.id === recipientOrGroupId);
-      newMsg = {
-        id: `MSG-${Date.now()}`,
-        senderId: currentUser.id,
-        senderName: currentUser.name,
-        senderAvatar: currentUser.avatar || currentUser.name.slice(0, 2).toUpperCase(),
-        recipientId: recipientOrGroupId,
-        recipientName: recipient?.name || 'Team Member',
-        text,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        timestamp: new Date().toISOString(),
-        isRead: false,
-      };
 
-      try {
-        await apiRequest('/messages', 'POST', {
-          recipientId: recipientOrGroupId,
-          message: text,
-        });
-      } catch (err) {
-        console.error('API message error:', err);
-      }
+      setMessages((prev) => [...prev, newMsg]);
+      return newMsg;
+    } catch (err) {
+      console.error('[CrmContext sendMessage Error]:', err);
     }
-
-    setMessages((prev) => [...prev, newMsg]);
-    return newMsg;
   };
 
-  const createGroup = (name, memberIds, description = '') => {
-    const newGroup = {
-      id: `GRP-${Date.now()}`,
-      name,
-      description,
-      memberIds: Array.from(new Set([currentUser.id, ...memberIds])),
-      createdBy: currentUser.name,
-      createdAt: new Date().toISOString().split('T')[0],
-      avatar:
-        name
-          .split(' ')
-          .map((w) => w[0])
-          .slice(0, 2)
-          .join('')
-          .toUpperCase() || 'GP',
-    };
-    setGroups((prev) => [newGroup, ...prev]);
-    return newGroup;
+  const getMessageAttachmentSignedUrl = async (messageId) => {
+    const res = await apiRequest(`/messages/attachments/${messageId}/signed-url`);
+    if (res?.success && res.data?.signedUrl) {
+      return res.data.signedUrl;
+    }
+    return null;
+  };
+
+  const createGroup = async (name, memberIds, description = '') => {
+    try {
+      const res = await apiRequest('/messages/groups', 'POST', {
+        name,
+        memberIds,
+        description,
+      });
+
+      if (res?.success && res.data) {
+        const convo = res.data;
+        const newGroup = {
+          id: convo.id,
+          name: convo.title || name,
+          description: description || convo.title || 'Team Group',
+          memberIds:
+            convo.members?.map(
+              (m) =>
+                m.user?.employee?.employeeCode ||
+                m.user?.employee?.id ||
+                m.userId
+            ) || Array.from(new Set([currentUser?.id, ...memberIds])),
+          createdBy: currentUser?.name || 'Admin',
+          createdAt: convo.createdAt
+            ? convo.createdAt.split('T')[0]
+            : new Date().toISOString().split('T')[0],
+          avatar:
+            (convo.title || name)
+              .split(' ')
+              .map((w) => w[0])
+              .slice(0, 2)
+              .join('')
+              .toUpperCase() || 'GP',
+        };
+        setGroups((prev) => [newGroup, ...prev]);
+        return newGroup;
+      }
+    } catch (err) {
+      console.error('[CrmContext createGroup Error]:', err);
+    }
+    return null;
   };
 
   const markConversationRead = async (otherUserId) => {
@@ -1079,6 +1287,7 @@ export function CrmProvider({ children }) {
         // Domain Collections & Operations
         employees,
         addEmployee,
+        getEmployeeKycSignedUrls,
         updateEmployee,
         deactivateEmployee,
         reactivateEmployee,
@@ -1108,12 +1317,15 @@ export function CrmProvider({ children }) {
         addProduct,
         uploadProductDocument,
         replaceProductDocument,
+        getProductDocumentSignedUrl,
         deleteProductDocument,
 
         messages,
         groups,
         sendMessage,
+        getMessageAttachmentSignedUrl,
         createGroup,
+        fetchConversationMessages,
         markConversationRead,
         markGroupRead,
 

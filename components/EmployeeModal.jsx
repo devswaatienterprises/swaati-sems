@@ -23,9 +23,13 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
     permissions: { ...DEFAULT_PERMISSIONS, reports: false },
   });
 
+  const [frontFile, setFrontFile] = useState(null);
+  const [backFile, setBackFile] = useState(null);
   const [activeTab, setActiveTab] = useState('basic'); // 'basic' | 'documents' | 'permissions'
 
   useEffect(() => {
+    setFrontFile(null);
+    setBackFile(null);
     if (initialData) {
       setFormData({
         ...initialData,
@@ -56,7 +60,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData);
+    onSave(formData, frontFile, backFile);
     onClose();
   };
 
@@ -305,22 +309,25 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                     <ImageIcon className="w-4 h-4" />
                   </div>
                   <div className="font-bold text-slate-700 mb-0.5">ID Card Front Image</div>
-                  <div className="text-[10px] text-slate-500 mb-2">PNG, JPG, PDF up to 5MB</div>
+                  <div className="text-[10px] text-slate-500 mb-2">PNG, JPG, PDF up to 10MB</div>
                   <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[11px]">
                     <Upload className="w-3 h-3" />
-                    <span>{formData.idCardFrontUrl ? 'Change Image' : 'Upload Front'}</span>
+                    <span>{frontFile || formData.idCardFrontUrl ? 'Change Image' : 'Upload Front'}</span>
                     <input
                       type="file"
                       className="hidden"
+                      accept="image/jpeg,image/png,image/webp,application/pdf"
                       onChange={(e) => {
                         if (e.target.files?.[0]) {
-                          setFormData({ ...formData, idCardFrontUrl: URL.createObjectURL(e.target.files[0]) });
+                          setFrontFile(e.target.files[0]);
                         }
                       }}
                     />
                   </label>
-                  {formData.idCardFrontUrl && (
-                    <div className="mt-2 text-[10px] text-emerald-600 font-bold">✓ Front image attached</div>
+                  {(frontFile || formData.idCardFrontUrl) && (
+                    <div className="mt-2 text-[10px] text-emerald-600 font-bold">
+                      ✓ {frontFile ? frontFile.name : 'Front image attached'}
+                    </div>
                   )}
                 </div>
 
@@ -330,22 +337,25 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                     <ImageIcon className="w-4 h-4" />
                   </div>
                   <div className="font-bold text-slate-700 mb-0.5">ID Card Back Image</div>
-                  <div className="text-[10px] text-slate-500 mb-2">PNG, JPG, PDF up to 5MB</div>
+                  <div className="text-[10px] text-slate-500 mb-2">PNG, JPG, PDF up to 10MB</div>
                   <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[11px]">
                     <Upload className="w-3 h-3" />
-                    <span>{formData.idCardBackUrl ? 'Change Image' : 'Upload Back'}</span>
+                    <span>{backFile || formData.idCardBackUrl ? 'Change Image' : 'Upload Back'}</span>
                     <input
                       type="file"
                       className="hidden"
+                      accept="image/jpeg,image/png,image/webp,application/pdf"
                       onChange={(e) => {
                         if (e.target.files?.[0]) {
-                          setFormData({ ...formData, idCardBackUrl: URL.createObjectURL(e.target.files[0]) });
+                          setBackFile(e.target.files[0]);
                         }
                       }}
                     />
                   </label>
-                  {formData.idCardBackUrl && (
-                    <div className="mt-2 text-[10px] text-emerald-600 font-bold">✓ Back image attached</div>
+                  {(backFile || formData.idCardBackUrl) && (
+                    <div className="mt-2 text-[10px] text-emerald-600 font-bold">
+                      ✓ {backFile ? backFile.name : 'Back image attached'}
+                    </div>
                   )}
                 </div>
               </div>

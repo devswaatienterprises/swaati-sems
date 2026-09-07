@@ -17,7 +17,7 @@ export default function LeadModal({ isOpen, onClose, onSave, initialData = null 
     requirement: '',
     source: 'Call',
     assignedTo: employees.find((e) => e.status === 'Active')?.name || '',
-    assignedToId: employees.find((e) => e.status === 'Active')?.id || '',
+    assignedToId: employees.find((e) => e.status === 'Active')?.realId || employees.find((e) => e.status === 'Active')?.id || '',
     status: 'New',
     priority: 'Medium',
     followUpDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -36,7 +36,7 @@ export default function LeadModal({ isOpen, onClose, onSave, initialData = null 
         requirement: initialData.requirement || '',
         source: initialData.source || 'Call',
         assignedTo: initialData.assignedTo || employees.find((e) => e.status === 'Active')?.name || '',
-        assignedToId: initialData.assignedToId || employees.find((e) => e.status === 'Active')?.id || '',
+        assignedToId: initialData.assignedToRealId || initialData.assignedToId || employees.find((e) => e.status === 'Active')?.realId || employees.find((e) => e.status === 'Active')?.id || '',
         status: initialData.status || 'New',
         priority: initialData.priority || 'Medium',
         followUpDate: initialData.followUpDate
@@ -55,7 +55,7 @@ export default function LeadModal({ isOpen, onClose, onSave, initialData = null 
         requirement: '',
         source: 'Call',
         assignedTo: employees.find((e) => e.status === 'Active')?.name || '',
-        assignedToId: employees.find((e) => e.status === 'Active')?.id || '',
+        assignedToId: employees.find((e) => e.status === 'Active')?.realId || employees.find((e) => e.status === 'Active')?.id || '',
         status: 'New',
         priority: 'Medium',
         followUpDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -71,7 +71,7 @@ export default function LeadModal({ isOpen, onClose, onSave, initialData = null 
     setFormData({
       ...formData,
       assignedTo: empName,
-      assignedToId: emp?.id || '',
+      assignedToId: emp?.realId || emp?.id || '',
     });
   };
 
@@ -272,7 +272,7 @@ export default function LeadModal({ isOpen, onClose, onSave, initialData = null 
 
           {/* Attribution Box */}
           <div className="p-3 bg-purple-50 rounded-xl border border-purple-200/80 text-[11px] text-purple-900 flex items-center justify-between">
-            <span>Lead Handled By: <strong>{currentUser.name}</strong></span>
+            <span>Lead Handled By: <strong>{currentUser?.name || 'Admin'}</strong></span>
             <span className="text-purple-600 font-semibold">Source: {formData.source}</span>
           </div>
 
