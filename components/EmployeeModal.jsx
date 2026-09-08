@@ -59,6 +59,11 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
     idCardFrontUrl: '',
     idCardBackUrl: '',
     permissions: { ...DEFAULT_PERMISSIONS, reports: false },
+    attendanceVerification: 'NONE',
+    approvedIPs: '',
+    approvedLat: '',
+    approvedLng: '',
+    approvedRadiusMeters: 200,
   });
 
   const [frontFile, setFrontFile] = useState(null);
@@ -106,6 +111,11 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
         idCardFrontUrl: frontUrl,
         idCardBackUrl: backUrl,
         permissions: initialData.permissions || { ...DEFAULT_PERMISSIONS, reports: false },
+        attendanceVerification: initialData.attendanceVerification || 'NONE',
+        approvedIPs: initialData.approvedIPs || '',
+        approvedLat: initialData.approvedLat != null ? initialData.approvedLat : '',
+        approvedLng: initialData.approvedLng != null ? initialData.approvedLng : '',
+        approvedRadiusMeters: initialData.approvedRadiusMeters != null ? initialData.approvedRadiusMeters : 200,
       });
 
       // Pre-fetch signed URLs for existing documents if available
@@ -137,6 +147,11 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
         idCardFrontUrl: '',
         idCardBackUrl: '',
         permissions: { ...DEFAULT_PERMISSIONS, reports: false },
+        attendanceVerification: 'NONE',
+        approvedIPs: '',
+        approvedLat: '',
+        approvedLng: '',
+        approvedRadiusMeters: 200,
       });
     }
   }, [initialData, isOpen]);
@@ -659,6 +674,99 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                     placeholder="e.g. Shailendra Patil"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
+                </div>
+              </div>
+
+              {/* ---- ATTENDANCE VERIFICATION (Admin-configurable) ---- */}
+              <div className="border-t border-slate-100 pt-4 mt-2">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-6 h-6 rounded-md bg-indigo-600 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-slate-800 text-xs">Attendance Verification</div>
+                    <div className="text-[10px] text-slate-400 font-medium">Configure how this employee's check-in/check-out is verified</div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Method selector */}
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1 text-xs">Verification Method</label>
+                    <select
+                      value={formData.attendanceVerification || 'NONE'}
+                      onChange={(e) => setFormData({ ...formData, attendanceVerification: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs cursor-pointer"
+                    >
+                      <option value="NONE">None (No verification)</option>
+                      <option value="OFFICE_IP">Office IP — Verify by office public IP address</option>
+                      <option value="MOBILE_GPS">Mobile GPS — Verify by GPS location</option>
+                      <option value="HYBRID">Hybrid — GPS primary, IP as backup</option>
+                    </select>
+                  </div>
+
+                  {/* Office IP config */}
+                  {(formData.attendanceVerification === 'OFFICE_IP' || formData.attendanceVerification === 'HYBRID') && (
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1 text-xs">
+                        Approved Office IP Address(es)
+                        <span className="text-slate-400 font-normal ml-1">(comma-separated public IPs)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.approvedIPs || ''}
+                        onChange={(e) => setFormData({ ...formData, approvedIPs: e.target.value })}
+                        placeholder="e.g. 203.0.113.1, 203.0.113.5"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs font-mono"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1">Enter the public IP(s) of your office internet connection. Find yours at whatismyip.com.</p>
+                    </div>
+                  )}
+
+                  {/* GPS config */}
+                  {(formData.attendanceVerification === 'MOBILE_GPS' || formData.attendanceVerification === 'HYBRID') && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1 text-xs">Office Latitude</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={formData.approvedLat ?? ''}
+                            onChange={(e) => setFormData({ ...formData, approvedLat: e.target.value ? parseFloat(e.target.value) : null })}
+                            placeholder="e.g. 18.5204"
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1 text-xs">Office Longitude</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={formData.approvedLng ?? ''}
+                            onChange={(e) => setFormData({ ...formData, approvedLng: e.target.value ? parseFloat(e.target.value) : null })}
+                            placeholder="e.g. 73.8567"
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs font-mono"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1 text-xs">
+                          Allowed Radius (metres)
+                          <span className="text-slate-400 font-normal ml-1">Default: 200m</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="50"
+                          max="5000"
+                          value={formData.approvedRadiusMeters ?? 200}
+                          onChange={(e) => setFormData({ ...formData, approvedRadiusMeters: parseInt(e.target.value, 10) || 200 })}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs"
+                        />
+                        <p className="text-[10px] text-slate-400 mt-1">Employees within this radius of the office coordinates will be marked Verified.</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

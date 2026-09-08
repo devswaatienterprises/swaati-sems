@@ -41,14 +41,41 @@ export default function LeavePage() {
 
   // Filter leaves
   const displayedLeaves = leaves.filter((l) => {
-    const isMine = !isEmployee || l.employeeId === currentUser?.id || l.employeeId === currentUser?.realId;
+    const isMine =
+      !isEmployee ||
+      l.employeeId === currentUser?.id ||
+      l.employeeId === currentUser?.realId ||
+      l.employeeId === currentUser?.employeeCode ||
+      l.employeeId === currentUser?.userId ||
+      l.employeeRealId === currentUser?.realId ||
+      l.employeeRealId === currentUser?.id ||
+      (currentUser?.name && l.employeeName === currentUser?.name);
     const matchesStatus = statusFilter === 'ALL' || l.status === statusFilter;
     return isMine && matchesStatus;
   });
 
-  const pendingCount = leaves.filter((l) => l.status === 'Pending').length;
-  const approvedCount = leaves.filter((l) => l.status === 'Approved').length;
-  const rejectedCount = leaves.filter((l) => l.status === 'Rejected').length;
+  const pendingCount = leaves.filter((l) => {
+    const isMine = !isEmployee || l.employeeId === currentUser?.id || l.employeeId === currentUser?.realId || l.employeeRealId === currentUser?.realId || (currentUser?.name && l.employeeName === currentUser?.name);
+    return isMine && l.status === 'Pending';
+  }).length;
+  const approvedCount = leaves.filter((l) => {
+    const isMine = !isEmployee || l.employeeId === currentUser?.id || l.employeeId === currentUser?.realId || l.employeeRealId === currentUser?.realId || (currentUser?.name && l.employeeName === currentUser?.name);
+    return isMine && l.status === 'Approved';
+  }).length;
+  const rejectedCount = leaves.filter((l) => {
+    const isMine = !isEmployee || l.employeeId === currentUser?.id || l.employeeId === currentUser?.realId || l.employeeRealId === currentUser?.realId || (currentUser?.name && l.employeeName === currentUser?.name);
+    return isMine && l.status === 'Rejected';
+  }).length;
+
+  const handleApplyLeave = async (formData) => {
+    const res = await applyLeave(formData);
+    if (res?.success) {
+      if (statusFilter !== 'ALL' && statusFilter !== 'Pending') {
+        setStatusFilter('ALL');
+      }
+    }
+    return res;
+  };
 
   const handleApprove = (leaveId) => {
     const remarks = remarksInput[leaveId] || 'Approved';
@@ -68,7 +95,7 @@ export default function LeavePage() {
       <LeaveModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onApply={applyLeave}
+        onApply={handleApplyLeave}
       />
 
       {/* Header */}

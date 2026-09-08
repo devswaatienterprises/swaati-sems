@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Shell from '@/components/Shell';
 import ProductDocModal from '@/components/ProductDocModal';
+import AddProductModal from '@/components/AddProductModal';
 import { useCrm } from '@/context/CrmContext';
 import {
   FileSpreadsheet,
@@ -19,12 +20,14 @@ import {
   FileCheck,
   Building2,
   ExternalLink,
+  PackagePlus,
 } from 'lucide-react';
 
 export default function ProductsPage() {
   const {
     currentRole,
     products,
+    addProduct,
     uploadProductDocument,
     replaceProductDocument,
     getProductDocumentSignedUrl,
@@ -37,6 +40,7 @@ export default function ProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [expandedProductIds, setExpandedProductIds] = useState(new Set());
 
@@ -125,8 +129,29 @@ export default function ProductsPage() {
     return `${docs.length} Doc${docs.length > 1 ? 's' : ''} (${types})`;
   };
 
+  const handleSaveProduct = async (prodData) => {
+    try {
+      const created = await addProduct(prodData);
+      if (created) {
+        setToastMessage(`Product "${created.name}" created successfully!`);
+        setTimeout(() => setToastMessage(''), 4000);
+        return { success: true, data: created };
+      }
+      return { success: false, message: 'Failed to create product. Please check your inputs.' };
+    } catch (err) {
+      return { success: false, message: err.message || 'Failed to create product' };
+    }
+  };
+
   return (
     <Shell>
+      {/* Add Product Modal */}
+      <AddProductModal
+        isOpen={isAddProductModalOpen}
+        onClose={() => setIsAddProductModalOpen(false)}
+        onSave={handleSaveProduct}
+      />
+
       {/* Upload / Replace Document Modal */}
       <ProductDocModal
         isOpen={isModalOpen}
@@ -159,6 +184,16 @@ export default function ProductsPage() {
             {t('products.subtitle', 'Single source of truth for technical datasheets, method statements, brochures, and compliance certifications.')}
           </p>
         </div>
+
+        {(currentRole === 'ADMIN' || canCreate) && (
+          <button
+            onClick={() => setIsAddProductModalOpen(true)}
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs shadow-sm shadow-blue-600/20 flex items-center gap-2 transition-all shrink-0 cursor-pointer self-start md:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{t('products.btn.add_product', 'Add Product')}</span>
+          </button>
+        )}
       </div>
 
       {/* Search Bar */}
@@ -276,7 +311,7 @@ export default function ProductsPage() {
                                     className="text-xs px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold shadow-xs inline-flex items-center gap-1.5 transition-colors self-start sm:self-auto cursor-pointer"
                                   >
                                     <Plus className="w-3.5 h-3.5" />
-                                    <span>{t('products.add_document', '+ Add Document')}</span>
+                                    <span>{t('products.add_document', 'Add Document')}</span>
                                   </button>
                                 )}
                               </div>
@@ -294,7 +329,7 @@ export default function ProductsPage() {
                                         className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs shadow-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                                       >
                                         <Plus className="w-3.5 h-3.5" />
-                                        <span>{t('products.add_document', '+ Add Document')}</span>
+                                        <span>{t('products.add_document', 'Add Document')}</span>
                                       </button>
                                     </div>
                                   )}

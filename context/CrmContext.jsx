@@ -4,6 +4,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useRouter } from 'next/navigation';
 import { apiRequest } from '@/utils/api';
 import { translations } from '@/utils/translations';
+import { getOfficeTodayDateStr, formatTimeIST, formatOfficeDateDisplay } from '@/utils/timezone';
+import { requestGPSLocation, buildGPSBodyParams } from '@/utils/geoVerification';
 import { DEFAULT_PERMISSIONS } from './mockData';
 
 const CrmContext = createContext();
@@ -56,6 +58,7 @@ export function CrmProvider({ children }) {
   });
   const [auditLogs, setAuditLogs] = useState([]);
   const [checkedIn, setCheckedIn] = useState(false);
+  const [isSubmittingAttendance, setIsSubmittingAttendance] = useState(false);
   const [isEndOfDayModalOpen, setIsEndOfDayModalOpen] = useState(false);
   const [endOfDayTasks, setEndOfDayTasks] = useState([]);
 
@@ -164,13 +167,14 @@ export function CrmProvider({ children }) {
 
   const normalizeAttendance = (att) => ({
     id: att.id,
-    date: att.attendanceDate ? att.attendanceDate.split('T')[0] : (att.date ? new Date(att.date).toISOString().split('T')[0] : ''),
+    date: att.attendanceDate ? (typeof att.attendanceDate === 'string' ? att.attendanceDate.split('T')[0] : new Date(att.attendanceDate).toISOString().split('T')[0]) : (att.date ? new Date(att.date).toISOString().split('T')[0] : ''),
     employeeId: att.employee?.employeeCode || att.employeeId,
+    employeeRealId: att.employee?.id || att.employeeId,
     employeeName: att.employee?.name || 'Team Member',
     department: att.employee?.department || 'Operations',
     checkIn: att.checkIn ? (typeof att.checkIn === 'string' && att.checkIn.includes('T') ? new Date(att.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : att.checkIn) : '-',
     checkOut: att.checkOut ? (typeof att.checkOut === 'string' && att.checkOut.includes('T') ? new Date(att.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : att.checkOut) : '-',
-    workingHours: att.workingHours ? (typeof att.workingHours === 'number' ? `${Number(att.workingHours).toFixed(1)} hrs` : att.workingHours) : (att.checkIn && !att.checkOut ? 'In progress' : '-'),
+    workingHours: att.workingHours ? (typeof att.workingHours === 'number' ? `${Number(att.workingHours).toFixed(1)} hrs` : att.workingHours) : (att.checkIn && (!att.checkOut || att.checkOut === '-') ? 'In Progress' : '-'),
     status:
       att.attendanceStatus === 'PRESENT' || att.status === 'Present'
         ? 'Present'
@@ -180,13 +184,22 @@ export function CrmProvider({ children }) {
         ? 'On Leave'
         : att.attendanceStatus === 'HALF_DAY' || att.status === 'Half Day'
         ? 'Half Day'
+        : att.attendanceStatus === 'HOLIDAY' || att.status === 'Holiday'
+        ? 'Holiday'
+        : att.attendanceStatus === 'WEEKLY_OFF' || att.status === 'Weekly Off'
+        ? 'Weekly Off'
         : att.attendanceStatus === 'ABSENT' || att.status === 'Absent'
         ? 'Absent'
-        : 'Present',
+        : (att.attendanceStatus || att.status || 'Present'),
+    originalStatus: att.originalStatus || null,
     isLate: !!att.isLate || att.attendanceStatus === 'LATE',
     lateMinutes: att.lateMinutes || 0,
     correctedBy: att.correctedBy || null,
     correctionReason: att.correctionReason || null,
+    correctedAt: att.correctedAt || null,
+    isCorrected: Boolean(att.correctedBy || att.correctionReason || att.originalStatus || att.correctedAt),
+    checkInVerification: att.checkInVerification || null,
+    checkOutVerification: att.checkOutVerification || null,
   });
 
   const normalizeLeave = (lv) => ({
@@ -194,21 +207,22 @@ export function CrmProvider({ children }) {
     realId: lv.id,
     leaveCode: lv.leaveCode || lv.id,
     employeeId: lv.employee?.employeeCode || lv.employeeId,
+    employeeRealId: lv.employee?.id || lv.employeeId,
     employeeName: lv.employee?.name || 'Team Member',
     leaveType: lv.leaveType,
-    startDate: lv.startDate ? lv.startDate.split('T')[0] : '',
-    endDate: lv.endDate ? lv.endDate.split('T')[0] : '',
+    startDate: lv.startDate ? (typeof lv.startDate === 'string' ? lv.startDate.split('T')[0] : new Date(lv.startDate).toISOString().split('T')[0]) : '',
+    endDate: lv.endDate ? (typeof lv.endDate === 'string' ? lv.endDate.split('T')[0] : new Date(lv.endDate).toISOString().split('T')[0]) : '',
     totalDays: lv.totalDays || 1,
     reason: lv.reason,
     status:
-      lv.status === 'APPROVED'
+      lv.status === 'APPROVED' || lv.status === 'Approved'
         ? 'Approved'
-        : lv.status === 'REJECTED'
+        : lv.status === 'REJECTED' || lv.status === 'Rejected'
         ? 'Rejected'
-        : lv.status === 'CANCELLED'
+        : lv.status === 'CANCELLED' || lv.status === 'Cancelled'
         ? 'Cancelled'
         : 'Pending',
-    appliedDate: lv.appliedAt ? lv.appliedAt.split('T')[0] : '',
+    appliedDate: lv.appliedAt ? (typeof lv.appliedAt === 'string' ? lv.appliedAt.split('T')[0] : new Date(lv.appliedAt).toISOString().split('T')[0]) : '',
     adminRemarks: lv.reviewerRemarks || '',
   });
 
@@ -244,6 +258,7 @@ export function CrmProvider({ children }) {
     startDate: tsk.startDate ? tsk.startDate.split('T')[0] : '',
     deadline: tsk.deadline ? tsk.deadline.split('T')[0] : '',
     reminder: tsk.reminderTime || '1 day before deadline',
+    createdAt: tsk.createdAt || new Date().toISOString(),
     isRecurring: Boolean(tsk.recurringTaskId || tsk.recurringTask),
     recurringTaskId: tsk.recurringTaskId || tsk.recurringTask?.id || null,
     recurringCode: tsk.recurringTask?.recurringCode || null,
@@ -806,37 +821,107 @@ export function CrmProvider({ children }) {
   // ----------------------------------------------------
   // DAILY ATTENDANCE & SHIFTS (Persistent Database Sync)
   // ----------------------------------------------------
-  const toggleCheckIn = async () => {
-    if (!checkedIn) {
-      // Check In
-      const res = await apiRequest('/attendance/check-in', 'POST', { source: 'CRM Web' });
+  const getMyTodayAttendance = useCallback(
+    (attList = attendance, user = currentUser) => {
+      if (!user || (!user.id && !user.realId && !user.employeeCode)) return null;
+      const todayStr = getOfficeTodayDateStr();
+      return (
+        attList.find(
+          (a) =>
+            a.date === todayStr &&
+            (a.employeeRealId === user.realId ||
+              a.employeeRealId === user.id ||
+              a.employeeId === user.employeeCode ||
+              a.employeeId === user.id ||
+              a.employeeId === user.realId)
+        ) || null
+      );
+    },
+    [attendance, currentUser]
+  );
+
+  const todayAttendance = getMyTodayAttendance(attendance, currentUser);
+  const isTodayCheckedIn = Boolean(
+    todayAttendance &&
+      todayAttendance.checkIn &&
+      todayAttendance.checkIn !== '-' &&
+      (!todayAttendance.checkOut || todayAttendance.checkOut === '-')
+  );
+  const isTodayCompleted = Boolean(
+    todayAttendance &&
+      todayAttendance.checkIn &&
+      todayAttendance.checkIn !== '-' &&
+      todayAttendance.checkOut &&
+      todayAttendance.checkOut !== '-'
+  );
+
+  const checkIn = async () => {
+    if (isSubmittingAttendance) return;
+    setIsSubmittingAttendance(true);
+    try {
+      // Collect GPS if the employee's verification method requires it
+      const myEmployee = employees.find(
+        (e) => e.id === currentUser?.realId || e.userId === currentUser?.id || e.email === currentUser?.email
+      );
+      const verificationMethod = myEmployee?.attendanceVerification || 'NONE';
+      let gpsParams = {};
+      if (verificationMethod === 'MOBILE_GPS' || verificationMethod === 'HYBRID') {
+        const gpsResult = await requestGPSLocation(8000);
+        gpsParams = buildGPSBodyParams(gpsResult);
+      }
+
+      const res = await apiRequest('/attendance/check-in', 'POST', { source: 'CRM Web', ...gpsParams });
       if (res?.success && res.data) {
-        setCheckedIn(true);
         const normalized = normalizeAttendance(res.data);
         setAttendance((prev) => [normalized, ...prev.filter((a) => a.id !== normalized.id)]);
+        setCheckedIn(true);
+      } else if (res?.message) {
+        alert(res.message);
       }
-    } else {
-      // Check Out: Check for incomplete tasks due today
-      const todayStr = new Date().toISOString().split('T')[0];
-      const myIncompleteTasksDueToday = tasks.filter((t) => {
-        if (t.status === 'Completed' || t.status === 'COMPLETED' || t.status === 'Cancelled') return false;
-        const isAssignedToMe =
-          t.assignedTo === currentUser?.name ||
-          t.assignedToId === currentUser?.id ||
-          t.assignedToId === currentUser?.employeeCode ||
-          t.assignedToId === currentUser?.realId;
-        if (!isAssignedToMe) return false;
-        if (!t.deadline) return false;
-        return t.deadline <= todayStr;
-      });
+    } catch (err) {
+      console.error('Check-in error:', err);
+    } finally {
+      setIsSubmittingAttendance(false);
+    }
+  };
 
-      if (myIncompleteTasksDueToday.length > 0) {
-        setEndOfDayTasks(myIncompleteTasksDueToday);
-        setIsEndOfDayModalOpen(true);
-        return;
+  const checkOut = async () => {
+    if (isSubmittingAttendance) return;
+
+    // Check for incomplete tasks due today
+    const todayStr = getOfficeTodayDateStr();
+    const myIncompleteTasksDueToday = tasks.filter((t) => {
+      if (t.status === 'Completed' || t.status === 'COMPLETED' || t.status === 'Cancelled') return false;
+      const isAssignedToMe =
+        t.assignedTo === currentUser?.name ||
+        t.assignedToId === currentUser?.id ||
+        t.assignedToId === currentUser?.employeeCode ||
+        t.assignedToId === currentUser?.realId;
+      if (!isAssignedToMe) return false;
+      if (!t.deadline) return false;
+      return t.deadline <= todayStr;
+    });
+
+    if (myIncompleteTasksDueToday.length > 0) {
+      setEndOfDayTasks(myIncompleteTasksDueToday);
+      setIsEndOfDayModalOpen(true);
+      return;
+    }
+
+    setIsSubmittingAttendance(true);
+    try {
+      // Collect GPS if the employee's verification method requires it
+      const myEmployee = employees.find(
+        (e) => e.id === currentUser?.realId || e.userId === currentUser?.id || e.email === currentUser?.email
+      );
+      const verificationMethod = myEmployee?.attendanceVerification || 'NONE';
+      let gpsParams = {};
+      if (verificationMethod === 'MOBILE_GPS' || verificationMethod === 'HYBRID') {
+        const gpsResult = await requestGPSLocation(8000);
+        gpsParams = buildGPSBodyParams(gpsResult);
       }
 
-      const res = await apiRequest('/attendance/check-out', 'POST');
+      const res = await apiRequest('/attendance/check-out', 'POST', { ...gpsParams });
       if (res?.requiresTaskCheck && res.data?.pendingTasks) {
         setEndOfDayTasks(res.data.pendingTasks.map(normalizeTask));
         setIsEndOfDayModalOpen(true);
@@ -849,59 +934,89 @@ export function CrmProvider({ children }) {
         setAttendance((prev) =>
           prev.map((a) => (a.id === normalized.id ? normalized : a))
         );
-      } else {
-        // Fallback for offline mode when no tasks due
-        setCheckedIn(false);
+      } else if (res?.message) {
+        alert(res.message);
       }
+    } catch (err) {
+      console.error('Check-out error:', err);
+    } finally {
+      setIsSubmittingAttendance(false);
+    }
+  };
+
+  const toggleCheckIn = async () => {
+    const myAtt = getMyTodayAttendance();
+    if (!myAtt || !myAtt.checkIn || myAtt.checkIn === '-') {
+      await checkIn();
+    } else if (!myAtt.checkOut || myAtt.checkOut === '-') {
+      await checkOut();
     }
   };
 
   const submitEndOfDayCheckOut = async (taskUpdates) => {
-    // 1. Update local tasks & send formatted messages to task assigners
-    for (const update of taskUpdates) {
-      const task = tasks.find((t) => t.id === update.taskId);
-      if (update.status === 'Completed') {
-        await updateTaskStatus(update.taskId, 'Completed');
-      } else if (update.status && update.status !== task?.status) {
-        await updateTaskStatus(update.taskId, update.status);
-      }
+    if (isSubmittingAttendance) return;
+    setIsSubmittingAttendance(true);
+    try {
+      // 1. Update local tasks & send formatted messages to task assigners
+      for (const update of taskUpdates) {
+        const task = tasks.find((t) => t.id === update.taskId);
+        if (update.status === 'Completed') {
+          await updateTaskStatus(update.taskId, 'Completed');
+        } else if (update.status && update.status !== task?.status) {
+          await updateTaskStatus(update.taskId, update.status);
+        }
 
-      if (update.updateNote && update.updateNote.trim()) {
-        await addTaskComment(
-          update.taskId,
-          `[End-of-Day Check-Out Update]: ${update.updateNote}`
-        );
+        if (update.updateNote && update.updateNote.trim()) {
+          await addTaskComment(
+            update.taskId,
+            `[End-of-Day Check-Out Update]: ${update.updateNote}`
+          );
 
-        // Find assigner recipient
-        const assignerEmp = employees.find(
-          (e) =>
-            e.id === task?.assignedById ||
-            e.employeeCode === task?.assignedById ||
-            e.id === task?.assignedByEmployeeId ||
-            e.name === task?.assignedBy
-        );
-        const assignerRecipientId = assignerEmp?.id || task?.assignedById;
-        if (assignerRecipientId) {
-          const taskCodeDisplay = task?.taskCode ? ` (${task.taskCode})` : '';
-          const msgContent = `📋 End-of-Day Task Update\n\nTask: ${task?.title || 'Task'}${taskCodeDisplay}\nStatus: ${update.status || task?.status}\n\nUpdate:\n"${update.updateNote}"`;
-          await sendMessage(assignerRecipientId, msgContent);
+          // Find assigner recipient
+          const assignerEmp = employees.find(
+            (e) =>
+              e.id === task?.assignedById ||
+              e.employeeCode === task?.assignedById ||
+              e.id === task?.assignedByEmployeeId ||
+              e.name === task?.assignedBy
+          );
+          const assignerRecipientId = assignerEmp?.id || task?.assignedById;
+          if (assignerRecipientId) {
+            const taskCodeDisplay = task?.taskCode ? ` (${task.taskCode})` : '';
+            const msgContent = `📋 End-of-Day Task Update\n\nTask: ${task?.title || 'Task'}${taskCodeDisplay}\nStatus: ${update.status || task?.status}\n\nUpdate:\n"${update.updateNote}"`;
+            await sendMessage(assignerRecipientId, msgContent);
+          }
         }
       }
-    }
 
-    // 2. Submit check-out with task updates to backend
-    const res = await apiRequest('/attendance/check-out', 'POST', { taskUpdates });
-    if (res?.success && res.data) {
-      setCheckedIn(false);
-      const normalized = normalizeAttendance(res.data);
-      setAttendance((prev) =>
-        prev.map((a) => (a.id === normalized.id ? normalized : a))
+      // 2. Submit check-out with task updates to backend (also collect GPS)
+      const myEmp = employees.find(
+        (e) => e.id === currentUser?.realId || e.userId === currentUser?.id || e.email === currentUser?.email
       );
-    } else {
-      setCheckedIn(false);
+      const method = myEmp?.attendanceVerification || 'NONE';
+      let gpsP = {};
+      if (method === 'MOBILE_GPS' || method === 'HYBRID') {
+        const gR = await requestGPSLocation(8000);
+        gpsP = buildGPSBodyParams(gR);
+      }
+      const res = await apiRequest('/attendance/check-out', 'POST', { taskUpdates, ...gpsP });
+      if (res?.success && res.data) {
+        setCheckedIn(false);
+        const normalized = normalizeAttendance(res.data);
+        setAttendance((prev) =>
+          prev.map((a) => (a.id === normalized.id ? normalized : a))
+        );
+      } else {
+        setCheckedIn(false);
+        if (res?.message) alert(res.message);
+      }
+    } catch (err) {
+      console.error('Submit EndOfDay CheckOut error:', err);
+    } finally {
+      setIsSubmittingAttendance(false);
+      setIsEndOfDayModalOpen(false);
+      setEndOfDayTasks([]);
     }
-    setIsEndOfDayModalOpen(false);
-    setEndOfDayTasks([]);
   };
 
   const closeEndOfDayModal = () => {
@@ -916,25 +1031,54 @@ export function CrmProvider({ children }) {
       'Half Day': 'HALF_DAY',
       Absent: 'ABSENT',
       'On Leave': 'ON_LEAVE',
+      Holiday: 'HOLIDAY',
+      'Weekly Off': 'WEEKLY_OFF',
     };
 
-    await apiRequest(`/attendance/${recordId}/correct`, 'PATCH', {
+    const res = await apiRequest(`/attendance/${recordId}/correct`, 'PATCH', {
       attendanceStatus: statusMap[newStatus] || newStatus,
       correctionReason: reason,
     });
 
-    setAttendance((prev) =>
-      prev.map((a) =>
-        a.id === recordId
-          ? {
-              ...a,
-              status: newStatus,
-              correctedBy: currentUser.name,
-              correctionReason: reason,
-            }
-          : a
-      )
-    );
+    if (res?.success && res.data) {
+      const normalized = normalizeAttendance(res.data);
+      setAttendance((prev) =>
+        prev.map((a) => (a.id === recordId ? normalized : a))
+      );
+      return res;
+    } else {
+      setAttendance((prev) =>
+        prev.map((a) =>
+          a.id === recordId
+            ? {
+                ...a,
+                status: newStatus,
+                originalStatus: a.originalStatus || a.status,
+                correctedBy: currentUser?.name || currentUser?.email || 'Administrator',
+                correctionReason: reason,
+                correctedAt: new Date().toISOString(),
+                isCorrected: true,
+              }
+            : a
+        )
+      );
+      return res;
+    }
+  };
+
+  // Admin-only: update per-employee attendance verification configuration
+  const updateEmployeeVerification = async (empId, verificationConfig) => {
+    const emp = employees.find((e) => e.id === empId || e.realId === empId);
+    const realId = emp?.realId || empId;
+    const res = await apiRequest(`/employees/${realId}/verification`, 'PATCH', verificationConfig);
+    if (res?.success && res.data) {
+      setEmployees((prev) =>
+        prev.map((e) =>
+          e.id === empId || e.realId === empId ? { ...e, ...verificationConfig } : e
+        )
+      );
+    }
+    return res;
   };
 
   // ----------------------------------------------------
@@ -951,32 +1095,60 @@ export function CrmProvider({ children }) {
 
     if (res?.success && res.data) {
       const normalized = normalizeLeave(res.data);
-      setLeaves((prev) => [normalized, ...prev]);
-      return normalized;
+      setLeaves((prev) => [normalized, ...prev.filter((l) => l.realId !== normalized.realId && l.id !== normalized.id)]);
+      return { success: true, data: normalized };
     }
-    return null;
+    return { success: false, message: res?.message || 'Failed to submit leave request' };
   };
 
   const approveLeave = async (leaveId, remarks = '') => {
-    await apiRequest(`/leaves/${leaveId}/status`, 'PATCH', {
+    const leaveItem = leaves.find((l) => l.id === leaveId || l.realId === leaveId || l.leaveCode === leaveId);
+    const targetId = leaveItem?.realId || leaveId;
+
+    const res = await apiRequest(`/leaves/${targetId}/status`, 'PATCH', {
       status: 'APPROVED',
       reviewerRemarks: remarks,
     });
 
-    setLeaves((prev) =>
-      prev.map((l) => (l.id === leaveId ? { ...l, status: 'Approved', adminRemarks: remarks } : l))
-    );
+    if (res?.success && res.data) {
+      const normalized = normalizeLeave(res.data);
+      setLeaves((prev) =>
+        prev.map((l) => (l.id === leaveId || l.realId === targetId || l.leaveCode === leaveId ? normalized : l))
+      );
+    } else {
+      setLeaves((prev) =>
+        prev.map((l) =>
+          l.id === leaveId || l.realId === targetId || l.leaveCode === leaveId
+            ? { ...l, status: 'Approved', adminRemarks: remarks }
+            : l
+        )
+      );
+    }
   };
 
   const rejectLeave = async (leaveId, remarks = '') => {
-    await apiRequest(`/leaves/${leaveId}/status`, 'PATCH', {
+    const leaveItem = leaves.find((l) => l.id === leaveId || l.realId === leaveId || l.leaveCode === leaveId);
+    const targetId = leaveItem?.realId || leaveId;
+
+    const res = await apiRequest(`/leaves/${targetId}/status`, 'PATCH', {
       status: 'REJECTED',
       reviewerRemarks: remarks,
     });
 
-    setLeaves((prev) =>
-      prev.map((l) => (l.id === leaveId ? { ...l, status: 'Rejected', adminRemarks: remarks } : l))
-    );
+    if (res?.success && res.data) {
+      const normalized = normalizeLeave(res.data);
+      setLeaves((prev) =>
+        prev.map((l) => (l.id === leaveId || l.realId === targetId || l.leaveCode === leaveId ? normalized : l))
+      );
+    } else {
+      setLeaves((prev) =>
+        prev.map((l) =>
+          l.id === leaveId || l.realId === targetId || l.leaveCode === leaveId
+            ? { ...l, status: 'Rejected', adminRemarks: remarks }
+            : l
+        )
+      );
+    }
   };
 
   // ----------------------------------------------------
@@ -1758,10 +1930,17 @@ export function CrmProvider({ children }) {
         deactivateEmployee,
         reactivateEmployee,
         updateEmployeePermissions,
+        updateEmployeeVerification,
 
         attendance,
         checkedIn,
+        isTodayCheckedIn,
+        isTodayCompleted,
+        todayAttendance,
+        isSubmittingAttendance,
         toggleCheckIn,
+        checkIn,
+        checkOut,
         correctAttendance,
         isEndOfDayModalOpen,
         endOfDayTasks,

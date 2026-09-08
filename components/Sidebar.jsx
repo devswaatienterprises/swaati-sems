@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCrm } from '@/context/CrmContext';
@@ -129,10 +130,13 @@ export default function Sidebar({ isOpen, onClose }) {
         <div className="h-16 shrink-0 flex items-center justify-between px-6 bg-slate-950 border-b border-slate-800">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white p-1.5 flex items-center justify-center shadow-sm shadow-black/20 shrink-0">
-              <img
+              <Image
                 src="/images/se-logo.webp"
                 alt="Swaati Enterprises Logo"
+                width={40}
+                height={40}
                 className="w-full h-full object-contain"
+                priority
               />
             </div>
             <div>

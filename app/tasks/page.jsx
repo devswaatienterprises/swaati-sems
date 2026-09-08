@@ -61,7 +61,8 @@ export default function TasksPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [priorityFilter, setPriorityFilter] = useState('ALL');
   const [assigneeFilter, setAssigneeFilter] = useState('ALL');
-  const [sortBy, setSortBy] = useState('deadline'); // 'deadline' | 'priority' | 'title' | 'status'
+  const [sortField, setSortField] = useState('createdAt'); // 'createdAt' | 'deadline' | 'priority' | 'title' | 'status' | 'taskCode'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'desc' (Newest) | 'asc' (Oldest)
 
   // Recurring SOPs Filters
   const [recurringSearchTerm, setRecurringSearchTerm] = useState('');
@@ -142,6 +143,28 @@ export default function TasksPage() {
     );
   });
 
+  const formatCreatedDateTime = (dateStr) => {
+    if (!dateStr) return { date: '-', time: '' };
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return { date: dateStr, time: '' };
+      return {
+        date: d.toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        }),
+        time: d.toLocaleTimeString('en-IN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        }),
+      };
+    } catch {
+      return { date: dateStr, time: '' };
+    }
+  };
+
   // Filter & Search for Standard Tasks
   const filteredTasks = visibleTasks
     .filter((task) => {
@@ -162,20 +185,34 @@ export default function TasksPage() {
       return matchesSearch && matchesStatus && matchesPriority && matchesAssignee;
     })
     .sort((a, b) => {
-      if (sortBy === 'deadline') {
-        return new Date(a.deadline || '2099-01-01') - new Date(b.deadline || '2099-01-01');
+      if (sortField === 'createdAt') {
+        const timeA = new Date(a.createdAt || 0).getTime();
+        const timeB = new Date(b.createdAt || 0).getTime();
+        return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
       }
-      if (sortBy === 'priority') {
+      if (sortField === 'deadline') {
+        const timeA = new Date(a.deadline || '2099-01-01').getTime();
+        const timeB = new Date(b.deadline || '2099-01-01').getTime();
+        return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+      }
+      if (sortField === 'priority') {
         const pOrder = { Urgent: 1, High: 2, Medium: 3, Low: 4 };
-        return (pOrder[a.priority] || 9) - (pOrder[b.priority] || 9);
+        const diff = (pOrder[a.priority] || 9) - (pOrder[b.priority] || 9);
+        return sortOrder === 'desc' ? -diff : diff;
       }
-      if (sortBy === 'status') {
-        return (a.status || '').localeCompare(b.status || '');
+      if (sortField === 'status') {
+        const diff = (a.status || '').localeCompare(b.status || '');
+        return sortOrder === 'desc' ? -diff : diff;
       }
-      if (sortBy === 'title') {
-        return (a.title || '').localeCompare(b.title || '');
+      if (sortField === 'title') {
+        const diff = (a.title || '').localeCompare(b.title || '');
+        return sortOrder === 'desc' ? -diff : diff;
       }
-      return (b.id || '').localeCompare(a.id || '');
+      if (sortField === 'taskCode') {
+        const diff = (a.taskCode || a.id || '').localeCompare(b.taskCode || b.id || '');
+        return sortOrder === 'desc' ? -diff : diff;
+      }
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
     });
 
   // Filter & Search for Recurring Tasks / SOPs
@@ -574,21 +611,6 @@ export default function TasksPage() {
                     ))}
                 </select>
               </div>
-
-              {/* Sort By */}
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
-                <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
-                >
-                  <option value="deadline">{t('tasks.due_date', 'Due Date')}</option>
-                  <option value="priority">{t('tasks.priority', 'Priority')}</option>
-                  <option value="status">{t('tasks.status', 'Status')}</option>
-                  <option value="title">{t('tasks.task_title', 'Task Title')}</option>
-                </select>
-              </div>
             </div>
           </div>
 
@@ -599,10 +621,53 @@ export default function TasksPage() {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider sticky top-0 z-10 text-[11px]">
                     <tr>
+                      <th
+                        onClick={() => {
+                          if (sortField === 'createdAt') {
+                            setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'));
+                          } else {
+                            setSortField('createdAt');
+                            setSortOrder('desc');
+                          }
+                        }}
+                        className="py-3.5 px-4 whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors select-none text-slate-700 font-bold"
+                        title="Click to toggle Created On sort"
+                      >
+                        <div className="inline-flex items-center gap-1.5">
+                          <span>{t('tasks.table.created_on', 'Created On')}</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortField === 'createdAt' ? 'text-amber-600' : 'text-slate-400'}`} />
+                          {sortField === 'createdAt' && (
+                            <span className="text-[9px] font-extrabold text-amber-700 bg-amber-100 px-1 py-0.5 rounded uppercase">
+                              {sortOrder === 'desc' ? '↓ Newest' : '↑ Oldest'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
                       <th className="py-3.5 px-4 whitespace-nowrap">{t('tasks.task_id', 'Task ID')}</th>
                       <th className="py-3.5 px-4 max-w-[220px]">{t('tasks.task_title', 'Task')}</th>
                       <th className="py-3.5 px-4 min-w-[125px]">{t('tasks.status', 'Status')}</th>
-                      <th className="py-3.5 px-4 whitespace-nowrap">{t('tasks.priority', 'Priority')}</th>
+                      <th
+                        onClick={() => {
+                          if (sortField === 'priority') {
+                            setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'));
+                          } else {
+                            setSortField('priority');
+                            setSortOrder('desc');
+                          }
+                        }}
+                        className="py-3.5 px-4 whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors select-none text-slate-700 font-bold"
+                        title="Click to toggle Priority sort"
+                      >
+                        <div className="inline-flex items-center gap-1.5">
+                          <span>{t('tasks.priority', 'Priority')}</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortField === 'priority' ? 'text-amber-600' : 'text-slate-400'}`} />
+                          {sortField === 'priority' && (
+                            <span className="text-[9px] font-extrabold text-amber-700 bg-amber-100 px-1 py-0.5 rounded uppercase">
+                              {sortOrder === 'desc' ? '↓ High-Low' : '↑ Low-High'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
                       <th className="py-3.5 px-4 min-w-[140px]">{t('tasks.assigned_to', 'Assigned To')}</th>
                       <th className="py-3.5 px-4 min-w-[130px]">{t('tasks.assigned_by', 'Assigned By')}</th>
                       <th className="py-3.5 px-4 whitespace-nowrap">{t('tasks.due_date', 'Due Date')}</th>
@@ -619,7 +684,17 @@ export default function TasksPage() {
 
                       return (
                         <tr key={tItem.id} className="hover:bg-slate-50/80 transition-colors">
-                          {/* 1. Task ID */}
+                          {/* 1. Created On */}
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <div className="font-bold text-slate-800 text-[11px] leading-snug">
+                              {formatCreatedDateTime(tItem.createdAt).date}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-medium mt-0.5">
+                              {formatCreatedDateTime(tItem.createdAt).time}
+                            </div>
+                          </td>
+
+                          {/* 2. Task ID */}
                           <td className="py-3.5 px-4 font-mono font-bold text-slate-500 text-[11px] whitespace-nowrap">
                             <div className="flex items-center gap-1.5">
                               <span className="px-2 py-0.5 bg-slate-100 rounded border border-slate-200/80">
@@ -1170,9 +1245,10 @@ export default function TasksPage() {
                                 setEditingRecurringTask(null);
                                 setIsRecurringModalOpen(true);
                               }}
-                              className="mt-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                              className="mt-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer inline-flex items-center gap-1.5"
                             >
-                              + {t('tasks.recurring.create_sop', 'Create First SOP')}
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>{t('tasks.recurring.create_sop', 'Create First SOP')}</span>
                             </button>
                           )}
                         </div>

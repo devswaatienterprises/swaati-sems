@@ -41,10 +41,8 @@ export default function EmployeesPage() {
   const [statusFilter, setStatusFilter] = useState('ACTIVE'); // 'ACTIVE' | 'INACTIVE' | 'ALL'
   const [deptFilter, setDeptFilter] = useState('ALL');
 
-  // Modals & Editing
+  // Modals & Adding
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState(null);
-  const [selectedActivityEmployee, setSelectedActivityEmployee] = useState(null);
 
   // Dropdown state for three-dot menu
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -113,30 +111,15 @@ export default function EmployeesPage() {
 
   return (
     <Shell>
-      {/* Add / Edit Team Member Modal */}
+      {/* Add Team Member Modal */}
       <EmployeeModal
-        isOpen={isAddModalOpen || !!editingEmployee}
-        onClose={() => {
-          setIsAddModalOpen(false);
-          setEditingEmployee(null);
-        }}
-        initialData={editingEmployee}
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        initialData={null}
         onSave={(data, frontFile, backFile) => {
-          if (editingEmployee) {
-            updateEmployee(editingEmployee.id, data, frontFile, backFile);
-            setEditingEmployee(null);
-          } else {
-            addEmployee(data, frontFile, backFile);
-            setIsAddModalOpen(false);
-          }
+          addEmployee(data, frontFile, backFile);
+          setIsAddModalOpen(false);
         }}
-      />
-
-      {/* Admin-only Activity History Modal */}
-      <EmployeeActivityModal
-        isOpen={!!selectedActivityEmployee}
-        employee={selectedActivityEmployee}
-        onClose={() => setSelectedActivityEmployee(null)}
       />
 
       {/* Deactivate Confirmation Modal */}
@@ -363,37 +346,9 @@ export default function EmployeesPage() {
                             <span>{t('employees.menu.view_profile', 'View Profile')}</span>
                           </Link>
 
-                          {/* 2. Edit */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenMenuId(null);
-                              setEditingEmployee(emp);
-                            }}
-                            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors text-left cursor-pointer"
-                          >
-                            <Edit2 className="w-4 h-4 text-slate-400" />
-                            <span>{t('employees.menu.edit', 'Edit')}</span>
-                          </button>
-
-                          {/* 3. Activity History (ADMIN ONLY) */}
-                          {currentRole === 'ADMIN' && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOpenMenuId(null);
-                                setSelectedActivityEmployee(emp);
-                              }}
-                              className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition-colors text-left cursor-pointer"
-                            >
-                              <History className="w-4 h-4 text-purple-500" />
-                              <span>{t('employees.menu.activity_history', 'Activity History')}</span>
-                            </button>
-                          )}
-
                           <div className="my-1 border-t border-slate-100" />
 
-                          {/* 4. Deactivate / Activate */}
+                          {/* 2. Deactivate / Activate */}
                           {emp.status === 'Active' ? (
                             <button
                               type="button"

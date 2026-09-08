@@ -9,6 +9,7 @@ import EmployeeModal from '@/components/EmployeeModal';
 import TaskModal from '@/components/TaskModal';
 import LeadModal from '@/components/LeadModal';
 import LeaveModal from '@/components/LeaveModal';
+import { formatOfficeDateDisplay } from '@/utils/timezone';
 import {
   Users,
   Clock,
@@ -41,6 +42,10 @@ export default function DashboardPage() {
     leads,
     notifications,
     checkedIn,
+    isTodayCheckedIn,
+    isTodayCompleted,
+    todayAttendance,
+    isSubmittingAttendance,
     toggleCheckIn,
     approveLeave,
     rejectLeave,
@@ -83,7 +88,9 @@ export default function DashboardPage() {
   const pendingLeaves = leaves.filter((l) => l.status === 'Pending');
 
   // Employee Metrics
-  const myTasks = tasks.filter((t) => t.assignedToId === currentUser.id || t.assignedTo === currentUser.name);
+  const myTasks = tasks
+    .filter((t) => t.assignedToId === currentUser.id || t.assignedToId === currentUser.realId || t.assignedTo === currentUser.name)
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   const myDueTodayTasks = myTasks.filter((t) => t.status !== 'Completed');
   const myLeads = leads.filter((l) => l.assignedToId === currentUser.id || l.assignedTo === currentUser.name);
   const myPendingLeaves = leaves.filter((l) => l.employeeId === currentUser.id && l.status === 'Pending');
@@ -131,28 +138,66 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              {t('dashboard.shift_card_title', "Today's Shift Attendance")} ({new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })})
+              {t('dashboard.shift_card_title', "Today's Shift Attendance")} ({formatOfficeDateDisplay()})
             </div>
-            <div className="text-lg font-bold text-slate-900 mt-1 flex items-center gap-2">
-              <span className={`w-3 h-3 rounded-full ${checkedIn ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></span>
-              <span>{checkedIn ? t('dashboard.checked_in_active', 'Currently Checked In (Active Shift)') : t('dashboard.not_checked_in', 'Not Checked In Yet')}</span>
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {t('dashboard.shift_instructions', 'Shift Start: 10:00 AM • Record your check-in and check-out daily from here.')}
-            </p>
+            {isTodayCompleted ? (
+              <>
+                <div className="text-lg font-bold text-slate-900 mt-1 flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  <span>{t('dashboard.shift_completed', 'Shift Completed • Day Closed')}</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {t('attendance.check_in', 'In')}: <strong className="text-slate-800">{todayAttendance?.checkIn}</strong> • {t('attendance.check_out', 'Out')}: <strong className="text-slate-800">{todayAttendance?.checkOut}</strong> • {t('attendance.duration', 'Duration')}: <strong className="text-slate-800">{todayAttendance?.workingHours || 'Closed'}</strong>
+                </p>
+              </>
+            ) : isTodayCheckedIn ? (
+              <>
+                <div className="text-lg font-bold text-slate-900 mt-1 flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>{t('dashboard.checked_in_active', 'Checked In')} ({todayAttendance?.checkIn}) • {t('attendance.working_active', 'Working Session Active')}</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {t('dashboard.shift_instructions', 'Shift Start: 10:00 AM • Record your check-in and check-out daily from here.')}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="text-lg font-bold text-slate-900 mt-1 flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-slate-300"></span>
+                  <span>{t('dashboard.not_checked_in', 'Not Checked In Yet')}</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {t('dashboard.shift_instructions', 'Shift Start: 10:00 AM • Record your check-in and check-out daily from here.')}
+                </p>
+              </>
+            )}
           </div>
 
-          <button
-            onClick={toggleCheckIn}
-            className={`px-6 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer self-start sm:self-auto ${
-              checkedIn
-                ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
-                : 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-600/20'
-            }`}
-          >
-            {checkedIn ? <UserCheck className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-            <span>{checkedIn ? t('dashboard.mark_check_out', 'Mark Check-Out') : t('dashboard.mark_check_in', 'Mark Check-In')}</span>
-          </button>
+          <div>
+            {isTodayCompleted ? (
+              <div className="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-xs flex items-center gap-2 shadow-xs self-start sm:self-auto">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>{t('dashboard.day_closed', 'Completed / Day Closed')}</span>
+              </div>
+            ) : (
+              <button
+                onClick={toggleCheckIn}
+                disabled={isSubmittingAttendance}
+                className={`px-6 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer self-start sm:self-auto disabled:opacity-50 ${
+                  isTodayCheckedIn
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
+                    : 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-600/20'
+                }`}
+              >
+                {isTodayCheckedIn ? <UserCheck className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                <span>
+                  {isSubmittingAttendance
+                    ? (isTodayCheckedIn ? 'Checking Out...' : 'Checking In...')
+                    : (isTodayCheckedIn ? t('dashboard.mark_check_out', 'Check Out') : t('dashboard.mark_check_in', 'Mark Check-In'))}
+                </span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -192,7 +237,7 @@ export default function DashboardPage() {
                     className="text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>{t('dashboard.kpi.add_member', '+ Add Member')}</span>
+                    <span>{t('dashboard.kpi.add_member', 'Add Member')}</span>
                   </button>
                 )}
                 <span className="text-slate-400 group-hover:text-blue-600 flex items-center gap-0.5 ml-auto transition-colors">
@@ -255,7 +300,7 @@ export default function DashboardPage() {
                     className="text-purple-600 hover:text-purple-700 flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>{t('dashboard.kpi.add_lead', '+ Add Lead')}</span>
+                    <span>{t('dashboard.kpi.add_lead', 'Add Lead')}</span>
                   </button>
                 )}
                 <span className="text-slate-400 group-hover:text-purple-600 flex items-center gap-0.5 ml-auto transition-colors">
@@ -292,7 +337,7 @@ export default function DashboardPage() {
                     className="text-amber-600 hover:text-amber-700 flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>{t('dashboard.kpi.create_task', '+ Create Task')}</span>
+                    <span>{t('dashboard.kpi.create_task', 'Create Task')}</span>
                   </button>
                 )}
                 <span className="text-slate-400 group-hover:text-amber-600 flex items-center gap-0.5 ml-auto transition-colors">
@@ -477,7 +522,7 @@ export default function DashboardPage() {
                     className="text-amber-600 hover:text-amber-700 flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>{t('dashboard.kpi.create_task', '+ Create Task')}</span>
+                    <span>{t('dashboard.kpi.create_task', 'Create Task')}</span>
                   </button>
                 )}
                 <span className="text-slate-400 group-hover:text-amber-600 flex items-center gap-0.5 ml-auto transition-colors">
@@ -515,7 +560,7 @@ export default function DashboardPage() {
                       className="text-purple-600 hover:text-purple-700 flex items-center gap-1 cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>{t('dashboard.kpi.add_lead', '+ Add Lead')}</span>
+                      <span>{t('dashboard.kpi.add_lead', 'Add Lead')}</span>
                     </button>
                   )}
                   <span className="text-slate-400 group-hover:text-purple-600 flex items-center gap-0.5 ml-auto transition-colors">
@@ -554,7 +599,7 @@ export default function DashboardPage() {
                   className="text-emerald-600 hover:text-emerald-700 flex items-center gap-1 cursor-pointer"
                 >
                   <CalendarCheck2 className="w-3.5 h-3.5" />
-                  <span>{t('dashboard.apply_leave_btn', '+ Apply Leave')}</span>
+                  <span>{t('dashboard.apply_leave_btn', 'Apply Leave')}</span>
                 </button>
                 <span className="text-slate-400 group-hover:text-emerald-600 flex items-center gap-0.5 ml-auto transition-colors">
                   <span>{t('dashboard.view_leaves_link', 'View Leaves')}</span>

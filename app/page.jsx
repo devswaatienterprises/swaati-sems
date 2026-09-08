@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCrm } from '@/context/CrmContext';
 import { Eye, EyeOff, Lock, Mail, User, ShieldCheck, ArrowRight, AlertCircle } from 'lucide-react';
@@ -51,10 +52,13 @@ export default function LoginPage() {
         {/* Brand Badge */}
         <div className="flex justify-center mb-4">
           <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center p-2.5 shadow-xl shadow-black/20 shrink-0">
-            <img
+            <Image
               src="/images/se-logo.webp"
               alt="Swaati Enterprises Logo"
+              width={64}
+              height={64}
               className="w-full h-full object-contain"
+              priority
             />
           </div>
         </div>
