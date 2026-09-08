@@ -1337,151 +1337,16 @@ export function CrmProvider({ children }) {
   };
 
   // ========================================================
-  // Unified Content & Translation Management (One Row Per Alias)
-  // ========================================================
-  const [contentItems, setContentItems] = useState([]);
-  const [isLoadingContent, setIsLoadingContent] = useState(false);
-
-  const normalizeContentRow = (item) => ({
-    id: item.id,
-    alias: item.contentKey,
-    module: item.module || 'global',
-    contentType: item.contentType || 'text',
-    description: item.description || '',
-    isActive: item.isActive !== false,
-    updatedAt: item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('en-GB') : '',
-    updatedBy: item.updatedBy || 'Admin',
-    en: item.translations?.find((t) => t.language?.code === 'en' || t.languageId === 'en')?.value || '',
-    mr: item.translations?.find((t) => t.language?.code === 'mr' || t.languageId === 'mr')?.value || '',
-    hi: item.translations?.find((t) => t.language?.code === 'hi' || t.languageId === 'hi')?.value || '',
-    versions: item.versions || [],
-  });
-
-  const fetchContentItems = useCallback(async (moduleFilter = 'all') => {
-    setIsLoadingContent(true);
-    try {
-      const res = await apiRequest(`/content/items?module=${moduleFilter}`);
-      if (res?.success && Array.isArray(res.data)) {
-        const rows = res.data.map(normalizeContentRow);
-        setContentItems(rows);
-        return rows;
-      }
-    } catch (err) {
-      console.warn('[CrmContext fetchContentItems error]:', err);
-    } finally {
-      setIsLoadingContent(false);
-    }
-  }, []);
-
-  const saveContentRow = useCallback(
-    async (rowData) => {
-      try {
-        const res = await apiRequest('/content/row', {
-          method: 'PUT',
-          body: JSON.stringify(rowData),
-        });
-        if (res?.success && res.data) {
-          const updatedRow = normalizeContentRow(res.data);
-          setContentItems((prev) => {
-            const idx = prev.findIndex(
-              (r) => r.alias === updatedRow.alias || r.id === updatedRow.id
-            );
-            if (idx >= 0) {
-              const next = [...prev];
-              next[idx] = updatedRow;
-              return next;
-            }
-            return [updatedRow, ...prev];
-          });
-          loadContentBundle(locale);
-          return { success: true, data: updatedRow };
-        }
-        return { success: false, error: res?.message || 'Failed to save row' };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    },
-    [loadContentBundle, locale]
-  );
-
-  const createContentItem = useCallback(
-    async (itemData) => {
-      try {
-        const res = await apiRequest('/content/items', {
-          method: 'POST',
-          body: JSON.stringify(itemData),
-        });
-        if (res?.success && res.data) {
-          const newRow = normalizeContentRow(res.data);
-          setContentItems((prev) => [newRow, ...prev]);
-          loadContentBundle(locale);
-          return { success: true, data: newRow };
-        }
-        return { success: false, error: res?.message || 'Failed to create item' };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    },
-    [loadContentBundle, locale]
-  );
-
-  const importContentCsv = useCallback(
-    async (rows) => {
-      try {
-        const res = await apiRequest('/content/import-csv', {
-          method: 'POST',
-          body: JSON.stringify({ rows }),
-        });
-        if (res?.success) {
-          await fetchContentItems();
-          loadContentBundle(locale);
-          return res;
-        }
-        return res;
-      } catch (err) {
-        return { success: false, message: err.message };
-      }
-    },
-    [fetchContentItems, loadContentBundle, locale]
-  );
-
-  const renameContentAlias = useCallback(
-    async (id, newAlias) => {
-      try {
-        const res = await apiRequest(`/content/items/${id}/alias`, {
-          method: 'PUT',
-          body: JSON.stringify({ newAlias }),
-        });
-        if (res?.success) {
-          await fetchContentItems();
-          loadContentBundle(locale);
-          return { success: true };
-        }
-        return { success: false, error: res?.message || 'Failed to rename alias' };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    },
-    [fetchContentItems, loadContentBundle, locale]
-  );
-
   return (
     <CrmContext.Provider
       value={{
-        // Localization & Content Management
+        // Localization & Runtime Translation
         locale,
         setLocale,
         t,
         availableLanguages,
         contentBundle,
         loadContentBundle,
-        contentItems,
-        isLoadingContent,
-        fetchContentItems,
-        saveContentRow,
-        createContentItem,
-        importContentCsv,
-        renameContentAlias,
 
         // Auth & Role
         currentUser,

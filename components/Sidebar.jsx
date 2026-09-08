@@ -17,7 +17,6 @@ import {
   Settings,
   X,
   LogOut,
-  Languages,
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, onClose }) {
@@ -88,13 +87,6 @@ export default function Sidebar({ isOpen, onClose }) {
       href: '/messages',
       icon: MessageSquare,
       adminOnly: false,
-    },
-    {
-      key: 'translations',
-      label: 'Translations Management',
-      href: '/translations',
-      icon: Languages,
-      adminOnly: true, // Only Admin can manage translations
     },
     {
       key: 'settings',
