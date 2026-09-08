@@ -67,6 +67,17 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
   const [existingBackSignedUrl, setExistingBackSignedUrl] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState('basic'); // 'basic' | 'documents' | 'permissions'
+  const [expandedModules, setExpandedModules] = useState({
+    attendance: true,
+    leave: true,
+    tasks: true,
+    dashboard: false,
+    leads: false,
+    products: false,
+    notifications: false,
+    messaging: false,
+    reports: false,
+  });
 
   const frontInputRef = useRef(null);
   const backInputRef = useRef(null);
@@ -147,25 +158,11 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
     }
   }, [backFile]);
 
-  if (!isOpen) return null;
-
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave(formData, frontFile, backFile);
     onClose();
   };
-
-  const [expandedModules, setExpandedModules] = useState({
-    attendance: true,
-    leave: true,
-    tasks: true,
-    dashboard: false,
-    leads: false,
-    products: false,
-    notifications: false,
-    messaging: false,
-    reports: false,
-  });
 
   const moduleIconMap = {
     dashboard: LayoutDashboard,
@@ -370,6 +367,8 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
     }
     return 'Document';
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
