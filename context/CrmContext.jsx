@@ -38,6 +38,7 @@ export function CrmProvider({ children }) {
   const [attendance, setAttendance] = useState([]);
   const [leaves, setLeaves] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [recurringTasks, setRecurringTasks] = useState([]);
   const [leads, setLeads] = useState([]);
   const [products, setProducts] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -243,12 +244,53 @@ export function CrmProvider({ children }) {
     startDate: tsk.startDate ? tsk.startDate.split('T')[0] : '',
     deadline: tsk.deadline ? tsk.deadline.split('T')[0] : '',
     reminder: tsk.reminderTime || '1 day before deadline',
+    isRecurring: Boolean(tsk.recurringTaskId || tsk.recurringTask),
+    recurringTaskId: tsk.recurringTaskId || tsk.recurringTask?.id || null,
+    recurringCode: tsk.recurringTask?.recurringCode || null,
+    recurringFrequency: tsk.recurringTask?.frequency || null,
     comments: (tsk.comments || []).map((c) => ({
       id: c.id,
       author: c.author,
       text: c.content,
       time: c.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
     })),
+  });
+
+  const normalizeRecurringTask = (rec) => ({
+    id: rec.id,
+    recurringCode: rec.recurringCode,
+    title: rec.title,
+    description: rec.description || '',
+    priority:
+      rec.priority === 'URGENT'
+        ? 'Urgent'
+        : rec.priority === 'HIGH'
+        ? 'High'
+        : rec.priority === 'LOW'
+        ? 'Low'
+        : 'Medium',
+    frequency:
+      rec.frequency === 'DAILY'
+        ? 'Daily'
+        : rec.frequency === 'WEEKLY'
+        ? 'Weekly'
+        : rec.frequency === 'MONTHLY'
+        ? 'Monthly'
+        : rec.frequency,
+    daysOfWeek: rec.daysOfWeek || [],
+    dayOfMonth: rec.dayOfMonth || null,
+    startDate: rec.startDate ? rec.startDate.split('T')[0] : '',
+    endDate: rec.endDate ? rec.endDate.split('T')[0] : '',
+    dueTime: rec.dueTime || '18:00',
+    workingDaysOnly: rec.workingDaysOnly !== false,
+    active: rec.active !== false,
+    assignedTo: rec.assignedTo?.name || 'Unassigned',
+    assignedToId: rec.assignedTo?.employeeCode || rec.assignedToId,
+    assignedToRealId: rec.assignedTo?.id || rec.assignedToId,
+    assignedBy: rec.assignedBy?.name || 'Admin',
+    assignedById: rec.assignedBy?.employeeCode || rec.assignedById,
+    totalOccurrences: rec._count?.occurrences || 0,
+    totalTasks: rec._count?.tasks || 0,
   });
 
   const normalizeLead = (ld) => ({
@@ -358,6 +400,7 @@ export function CrmProvider({ children }) {
         settRes,
         auditRes,
         convoRes,
+        recTaskRes,
       ] = await Promise.all([
         apiRequest('/employees'),
         apiRequest('/attendance'),
@@ -369,6 +412,7 @@ export function CrmProvider({ children }) {
         apiRequest('/settings'),
         apiRequest('/audit'),
         apiRequest('/messages/conversations'),
+        apiRequest('/tasks/recurring'),
       ]);
 
       if (empRes?.success && empRes.data) {
@@ -390,6 +434,9 @@ export function CrmProvider({ children }) {
       }
       if (taskRes?.success && taskRes.data) {
         setTasks(taskRes.data.map(normalizeTask));
+      }
+      if (recTaskRes?.success && recTaskRes.data) {
+        setRecurringTasks(recTaskRes.data.map(normalizeRecurringTask));
       }
       if (leadRes?.success && leadRes.data) {
         setLeads(leadRes.data.map(normalizeLead));
@@ -990,6 +1037,132 @@ export function CrmProvider({ children }) {
         t.id === taskId ? { ...t, comments: [...(t.comments || []), newComment] } : t
       )
     );
+  };
+
+  const updateTask = async (taskId, taskData) => {
+    const res = await apiRequest(`/tasks/${taskId}/status`, 'PATCH', {
+      status: taskData.status,
+    });
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, ...taskData } : t))
+    );
+  };
+
+  // ----------------------------------------------------
+  // RECURRING TASKS / DAILY SOPS (Persistent Database Sync)
+  // ----------------------------------------------------
+  const fetchRecurringTasks = async () => {
+    const res = await apiRequest('/tasks/recurring');
+    if (res?.success && res.data) {
+      setRecurringTasks(res.data.map(normalizeRecurringTask));
+    }
+  };
+
+  const addRecurringTask = async (recData) => {
+    const res = await apiRequest('/tasks/recurring', 'POST', {
+      title: recData.title,
+      description: recData.description,
+      priority: (recData.priority || 'MEDIUM').toUpperCase(),
+      frequency: (recData.frequency || 'DAILY').toUpperCase(),
+      daysOfWeek: recData.daysOfWeek || [],
+      dayOfMonth: recData.dayOfMonth ? parseInt(recData.dayOfMonth, 10) : null,
+      startDate: recData.startDate,
+      endDate: recData.endDate || null,
+      dueTime: recData.dueTime || null,
+      workingDaysOnly: recData.workingDaysOnly !== false,
+      assignedToId: recData.assignedToRealId || recData.assignedToId,
+      active: recData.active !== false,
+    });
+
+    if (res?.success && res.data) {
+      const normalized = normalizeRecurringTask(res.data);
+      setRecurringTasks((prev) => [normalized, ...prev]);
+
+      // Refresh task list as today's occurrence may have been generated immediately
+      const taskRes = await apiRequest('/tasks');
+      if (taskRes?.success && taskRes.data) {
+        setTasks(taskRes.data.map(normalizeTask));
+      }
+
+      return normalized;
+    }
+    return null;
+  };
+
+  const updateRecurringTask = async (recId, recData) => {
+    const res = await apiRequest(`/tasks/recurring/${recId}`, 'PUT', {
+      title: recData.title,
+      description: recData.description,
+      priority: (recData.priority || 'MEDIUM').toUpperCase(),
+      frequency: (recData.frequency || 'DAILY').toUpperCase(),
+      daysOfWeek: recData.daysOfWeek || [],
+      dayOfMonth: recData.dayOfMonth ? parseInt(recData.dayOfMonth, 10) : null,
+      startDate: recData.startDate,
+      endDate: recData.endDate || null,
+      dueTime: recData.dueTime || null,
+      workingDaysOnly: recData.workingDaysOnly !== false,
+      assignedToId: recData.assignedToRealId || recData.assignedToId,
+      active: recData.active !== false,
+    });
+
+    if (res?.success && res.data) {
+      const normalized = normalizeRecurringTask(res.data);
+      setRecurringTasks((prev) =>
+        prev.map((r) => (r.id === recId ? normalized : r))
+      );
+
+      // Refresh task list
+      const taskRes = await apiRequest('/tasks');
+      if (taskRes?.success && taskRes.data) {
+        setTasks(taskRes.data.map(normalizeTask));
+      }
+
+      return normalized;
+    }
+    return null;
+  };
+
+  const toggleRecurringTaskStatus = async (recId, active) => {
+    const res = await apiRequest(`/tasks/recurring/${recId}/status`, 'PATCH', {
+      active,
+    });
+
+    if (res?.success) {
+      setRecurringTasks((prev) =>
+        prev.map((r) => (r.id === recId ? { ...r, active } : r))
+      );
+
+      if (active) {
+        // Refresh task list if reactivated and generated today's task
+        const taskRes = await apiRequest('/tasks');
+        if (taskRes?.success && taskRes.data) {
+          setTasks(taskRes.data.map(normalizeTask));
+        }
+      }
+      return true;
+    }
+    return false;
+  };
+
+  const deleteRecurringTask = async (recId) => {
+    const res = await apiRequest(`/tasks/recurring/${recId}`, 'DELETE');
+    if (res?.success) {
+      setRecurringTasks((prev) => prev.filter((r) => r.id !== recId));
+      return true;
+    }
+    return false;
+  };
+
+  const generateRecurringTasks = async () => {
+    const res = await apiRequest('/tasks/recurring/generate', 'POST');
+    if (res?.success) {
+      const taskRes = await apiRequest('/tasks');
+      if (taskRes?.success && taskRes.data) {
+        setTasks(taskRes.data.map(normalizeTask));
+      }
+      return res.data;
+    }
+    return null;
   };
 
   // ----------------------------------------------------
@@ -1602,8 +1775,18 @@ export function CrmProvider({ children }) {
 
         tasks,
         addTask,
+        updateTask,
         updateTaskStatus,
         addTaskComment,
+
+        // Recurring Tasks / SOPs
+        recurringTasks,
+        fetchRecurringTasks,
+        addRecurringTask,
+        updateRecurringTask,
+        toggleRecurringTaskStatus,
+        deleteRecurringTask,
+        generateRecurringTasks,
 
         leads,
         addLead,
