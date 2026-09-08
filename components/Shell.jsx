@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import EndOfDayTaskModal from './EndOfDayTaskModal';
 import { useCrm } from '@/context/CrmContext';
 import { ShieldAlert, ArrowLeft, LayoutDashboard } from 'lucide-react';
 import Link from 'next/link';
@@ -12,7 +13,17 @@ export default function Shell({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { currentRole, hasPermission, isAuthenticated, isLoadingAuth, t } = useCrm();
+  const {
+    currentRole,
+    hasPermission,
+    isAuthenticated,
+    isLoadingAuth,
+    isEndOfDayModalOpen,
+    endOfDayTasks,
+    closeEndOfDayModal,
+    submitEndOfDayCheckOut,
+    t,
+  } = useCrm();
 
   React.useEffect(() => {
     if (!isLoadingAuth && !isAuthenticated) {
@@ -88,6 +99,14 @@ export default function Shell({ children }) {
           </div>
         </main>
       </div>
+
+      {/* End-of-Day Task Check Modal on Check Out */}
+      <EndOfDayTaskModal
+        isOpen={isEndOfDayModalOpen}
+        tasks={endOfDayTasks}
+        onClose={closeEndOfDayModal}
+        onSubmit={submitEndOfDayCheckOut}
+      />
     </div>
   );
 }

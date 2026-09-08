@@ -55,6 +55,8 @@ export function CrmProvider({ children }) {
   });
   const [auditLogs, setAuditLogs] = useState([]);
   const [checkedIn, setCheckedIn] = useState(false);
+  const [isEndOfDayModalOpen, setIsEndOfDayModalOpen] = useState(false);
+  const [endOfDayTasks, setEndOfDayTasks] = useState([]);
 
   // Content & Translation Management State (Database-backed)
   const [contentBundle, setContentBundle] = useState({});
@@ -77,13 +79,13 @@ export function CrmProvider({ children }) {
   }, []);
 
   // Central Translation Function with Fallback Hierarchy
-  // Lookup: Database published translation -> Locale dictionary -> Default English dictionary -> Content key
+  // Lookup: Database published translation -> Locale dictionary -> Default English dictionary -> Fallback / Key
   const t = useCallback(
-    (key) => {
+    (key, fallback) => {
       if (contentBundle && contentBundle[key]) {
         return contentBundle[key];
       }
-      return translations[locale]?.[key] || translations.en[key] || key;
+      return translations[locale]?.[key] || (fallback !== undefined ? fallback : (translations.en?.[key] || key));
     },
     [contentBundle, locale]
   );
@@ -142,7 +144,7 @@ export function CrmProvider({ children }) {
     name: emp.name,
     email: emp.email,
     mobile: emp.mobile,
-    role: emp.user?.role || (emp.department?.includes('Executive') ? 'ADMIN' : 'EMPLOYEE'),
+    role: emp.user?.role || (emp.department?.includes('Executive') ? 'ADMIN' : 'OPERATION_HEAD'),
     department: emp.department,
     designation: emp.designation,
     status: emp.active ? 'Active' : 'Inactive',
@@ -187,7 +189,9 @@ export function CrmProvider({ children }) {
   });
 
   const normalizeLeave = (lv) => ({
-    id: lv.id,
+    id: lv.leaveCode || lv.id,
+    realId: lv.id,
+    leaveCode: lv.leaveCode || lv.id,
     employeeId: lv.employee?.employeeCode || lv.employeeId,
     employeeName: lv.employee?.name || 'Team Member',
     leaveType: lv.leaveType,
@@ -214,8 +218,10 @@ export function CrmProvider({ children }) {
     description: tsk.description || '',
     assignedTo: tsk.assignedTo?.name || 'Unassigned',
     assignedToId: tsk.assignedTo?.employeeCode || tsk.assignedToId,
+    assignedToEmployeeId: tsk.assignedTo?.id || tsk.assignedToId,
     assignedBy: tsk.assignedBy?.name || 'Admin',
     assignedById: tsk.assignedBy?.employeeCode || tsk.assignedById,
+    assignedByEmployeeId: tsk.assignedBy?.id || tsk.assignedById,
     priority:
       tsk.priority === 'URGENT'
         ? 'Urgent'
@@ -286,6 +292,7 @@ export function CrmProvider({ children }) {
     notes: ld.notes || '',
     followUpDate: ld.followUpDate ? ld.followUpDate.split('T')[0] : '',
     createdDate: ld.createdAt ? ld.createdAt.split('T')[0] : '',
+    createdAt: ld.createdAt || (ld.createdDate ? new Date(ld.createdDate).toISOString() : new Date().toISOString()),
   });
 
   const normalizeProduct = (prod) => ({
@@ -602,7 +609,7 @@ export function CrmProvider({ children }) {
       designation: empData.designation,
       reportingManager: empData.reportingManager,
       joiningDate: empData.joiningDate,
-      role: empData.role || 'EMPLOYEE',
+      role: empData.role || 'OPERATION_HEAD',
       userId: empData.userId,
       permissions: empData.permissions,
       idCardType: empData.idCardType,
@@ -643,11 +650,42 @@ export function CrmProvider({ children }) {
     return null;
   };
 
+  const deleteEmployeeDocument = async (empId, docId) => {
+    const emp = employees.find((e) => e.id === empId);
+    const realId = emp?.realId || empId;
+
+    const res = await apiRequest(`/employees/${realId}/documents/${docId}`, 'DELETE');
+    if (res?.success) {
+      setEmployees((prev) =>
+        prev.map((e) => {
+          if (e.id === empId || e.realId === realId) {
+            const updatedDocs = (e.documents || []).filter((d) => d.id !== docId);
+            return {
+              ...e,
+              documents: updatedDocs,
+              idCardFrontUrl: '',
+              idCardBackUrl: '',
+            };
+          }
+          return e;
+        })
+      );
+      return true;
+    }
+    return false;
+  };
+
   const updateEmployee = async (empId, updatedData, frontImageFile = null, backImageFile = null) => {
     const emp = employees.find((e) => e.id === empId);
     const realId = emp?.realId || empId;
 
     await apiRequest(`/employees/${realId}`, 'PUT', updatedData);
+
+    if (updatedData.permissions) {
+      await apiRequest(`/employees/${realId}/permissions`, 'PATCH', {
+        permissions: updatedData.permissions,
+      });
+    }
 
     let newDocs = emp?.documents || [];
     let updatedFrontUrl = emp?.idCardFrontUrl;
@@ -731,16 +769,97 @@ export function CrmProvider({ children }) {
         setAttendance((prev) => [normalized, ...prev.filter((a) => a.id !== normalized.id)]);
       }
     } else {
-      // Check Out
+      // Check Out: Check for incomplete tasks due today
+      const todayStr = new Date().toISOString().split('T')[0];
+      const myIncompleteTasksDueToday = tasks.filter((t) => {
+        if (t.status === 'Completed' || t.status === 'COMPLETED' || t.status === 'Cancelled') return false;
+        const isAssignedToMe =
+          t.assignedTo === currentUser?.name ||
+          t.assignedToId === currentUser?.id ||
+          t.assignedToId === currentUser?.employeeCode ||
+          t.assignedToId === currentUser?.realId;
+        if (!isAssignedToMe) return false;
+        if (!t.deadline) return false;
+        return t.deadline <= todayStr;
+      });
+
+      if (myIncompleteTasksDueToday.length > 0) {
+        setEndOfDayTasks(myIncompleteTasksDueToday);
+        setIsEndOfDayModalOpen(true);
+        return;
+      }
+
       const res = await apiRequest('/attendance/check-out', 'POST');
+      if (res?.requiresTaskCheck && res.data?.pendingTasks) {
+        setEndOfDayTasks(res.data.pendingTasks.map(normalizeTask));
+        setIsEndOfDayModalOpen(true);
+        return;
+      }
+
       if (res?.success && res.data) {
         setCheckedIn(false);
         const normalized = normalizeAttendance(res.data);
         setAttendance((prev) =>
           prev.map((a) => (a.id === normalized.id ? normalized : a))
         );
+      } else {
+        // Fallback for offline mode when no tasks due
+        setCheckedIn(false);
       }
     }
+  };
+
+  const submitEndOfDayCheckOut = async (taskUpdates) => {
+    // 1. Update local tasks & send formatted messages to task assigners
+    for (const update of taskUpdates) {
+      const task = tasks.find((t) => t.id === update.taskId);
+      if (update.status === 'Completed') {
+        await updateTaskStatus(update.taskId, 'Completed');
+      } else if (update.status && update.status !== task?.status) {
+        await updateTaskStatus(update.taskId, update.status);
+      }
+
+      if (update.updateNote && update.updateNote.trim()) {
+        await addTaskComment(
+          update.taskId,
+          `[End-of-Day Check-Out Update]: ${update.updateNote}`
+        );
+
+        // Find assigner recipient
+        const assignerEmp = employees.find(
+          (e) =>
+            e.id === task?.assignedById ||
+            e.employeeCode === task?.assignedById ||
+            e.id === task?.assignedByEmployeeId ||
+            e.name === task?.assignedBy
+        );
+        const assignerRecipientId = assignerEmp?.id || task?.assignedById;
+        if (assignerRecipientId) {
+          const taskCodeDisplay = task?.taskCode ? ` (${task.taskCode})` : '';
+          const msgContent = `📋 End-of-Day Task Update\n\nTask: ${task?.title || 'Task'}${taskCodeDisplay}\nStatus: ${update.status || task?.status}\n\nUpdate:\n"${update.updateNote}"`;
+          await sendMessage(assignerRecipientId, msgContent);
+        }
+      }
+    }
+
+    // 2. Submit check-out with task updates to backend
+    const res = await apiRequest('/attendance/check-out', 'POST', { taskUpdates });
+    if (res?.success && res.data) {
+      setCheckedIn(false);
+      const normalized = normalizeAttendance(res.data);
+      setAttendance((prev) =>
+        prev.map((a) => (a.id === normalized.id ? normalized : a))
+      );
+    } else {
+      setCheckedIn(false);
+    }
+    setIsEndOfDayModalOpen(false);
+    setEndOfDayTasks([]);
+  };
+
+  const closeEndOfDayModal = () => {
+    setIsEndOfDayModalOpen(false);
+    setEndOfDayTasks([]);
   };
 
   const correctAttendance = async (recordId, newStatus, reason) => {
@@ -946,12 +1065,12 @@ export function CrmProvider({ children }) {
     if (file) {
       payload = new FormData();
       payload.append('file', file);
-      payload.append('title', docData.title || 'Technical Datasheet (TDS)');
+      payload.append('title', docData.title);
       payload.append('documentType', docData.docType || 'datasheet');
       payload.append('version', docData.version || 'v1.0');
     } else {
       payload = {
-        title: docData.title || 'Technical Datasheet (TDS)',
+        title: docData.title,
         documentType: docData.docType || 'datasheet',
         fileName: docData.fileName,
         fileSize: docData.fileSize || '1.2 MB',
@@ -967,12 +1086,12 @@ export function CrmProvider({ children }) {
       const newDoc = {
         id: res.data.id,
         title: res.data.title,
-        docType: res.data.documentType,
+        docType: res.data.documentType || res.data.docType,
         fileName: res.data.fileName,
         fileSize: res.data.fileSize,
         version: res.data.version,
         uploadedBy: res.data.uploadedBy,
-        uploadedDate: res.data.createdAt ? res.data.createdAt.split('T')[0] : '',
+        uploadedDate: res.data.createdAt ? res.data.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
         fileUrl: res.data.fileUrl,
         storagePath: res.data.storagePath,
       };
@@ -983,8 +1102,25 @@ export function CrmProvider({ children }) {
         )
       );
       return newDoc;
+    } else {
+      const fallbackDoc = {
+        id: `doc-${Date.now()}`,
+        title: docData.title,
+        docType: docData.docType || 'Datasheet',
+        fileName: docData.fileName || file?.name || 'document.pdf',
+        fileSize: docData.fileSize || '1.2 MB',
+        version: docData.version || 'v1.0',
+        uploadedBy: currentUser?.name || 'Admin',
+        uploadedDate: new Date().toISOString().split('T')[0],
+        fileUrl: docData.fileUrl || '/datasheets/sample.pdf',
+      };
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === productId ? { ...p, documents: [...(p.documents || []), fallbackDoc] } : p
+        )
+      );
+      return fallbackDoc;
     }
-    return null;
   };
 
   const replaceProductDocument = async (productId, docId, newDocData, file = null) => {
@@ -1286,8 +1422,6 @@ export function CrmProvider({ children }) {
         totalLateMinutes,
         totalHours: `${totalHours.toFixed(1)} hrs`,
         weeklyOffs: 4,
-        checkInSummary: '09:45 AM Avg',
-        checkOutSummary: '06:15 PM Avg',
       };
     });
   };
@@ -1336,6 +1470,88 @@ export function CrmProvider({ children }) {
     document.body.removeChild(link);
   };
 
+  const exportLeadsReportCSV = (leadsToExport) => {
+    const data = leadsToExport || leads;
+    const headers = [
+      'Lead ID',
+      'Created Date',
+      'Created Time',
+      'Client / Company',
+      'Contact Person',
+      'Mobile Number',
+      'Email',
+      'Location',
+      'Product Interested',
+      'Requirement',
+      'Source',
+      'Assigned To',
+      'Status',
+      'Priority',
+      'Follow-up Date',
+      'Notes',
+    ];
+
+    const rows = data.map((l) => {
+      const d = l.createdAt ? new Date(l.createdAt) : null;
+      const dateStr = d && !isNaN(d.getTime())
+        ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+        : (l.createdDate || '-');
+      const timeStr = d && !isNaN(d.getTime())
+        ? d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+        : '';
+
+      return [
+        `"${l.leadCode || l.id}"`,
+        `"${dateStr}"`,
+        `"${timeStr}"`,
+        `"${(l.companyName || l.leadName || '').replace(/"/g, '""')}"`,
+        `"${(l.leadName || '').replace(/"/g, '""')}"`,
+        `"${l.mobileNumber || ''}"`,
+        `"${l.email || ''}"`,
+        `"${(l.location || '').replace(/"/g, '""')}"`,
+        `"${(l.productInterested || '').replace(/"/g, '""')}"`,
+        `"${(l.requirement || '').replace(/"/g, '""')}"`,
+        `"${l.source || ''}"`,
+        `"${(l.assignedTo || '').replace(/"/g, '""')}"`,
+        `"${l.status || 'New'}"`,
+        `"${l.priority || 'Medium'}"`,
+        `"${l.followUpDate || ''}"`,
+        `"${(l.notes || '').replace(/"/g, '""')}"`,
+      ];
+    });
+
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Swaati_Enterprises_Leads_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const getEmployeeActivityLogs = async (empId) => {
+    if (currentRole !== 'ADMIN') return [];
+    const emp = employees.find((e) => e.id === empId);
+    const realId = emp?.realId || empId;
+    const res = await apiRequest(`/employees/${realId}/activity`);
+    if (res?.success && Array.isArray(res.data)) {
+      return res.data.map((log) => ({
+        id: log.id,
+        action: log.action,
+        entityType: log.entityType,
+        entityId: log.entityId,
+        metadata: log.metadata,
+        performedBy: log.user?.employee?.name || log.user?.email || 'System / Staff',
+        time: log.createdAt ? new Date(log.createdAt).toLocaleString() : 'Recent',
+        createdAt: log.createdAt,
+      }));
+    }
+    return [];
+  };
+
   // ========================================================
   return (
     <CrmContext.Provider
@@ -1363,6 +1579,8 @@ export function CrmProvider({ children }) {
         employees,
         addEmployee,
         getEmployeeKycSignedUrls,
+        deleteEmployeeDocument,
+        getEmployeeActivityLogs,
         updateEmployee,
         deactivateEmployee,
         reactivateEmployee,
@@ -1372,6 +1590,10 @@ export function CrmProvider({ children }) {
         checkedIn,
         toggleCheckIn,
         correctAttendance,
+        isEndOfDayModalOpen,
+        endOfDayTasks,
+        closeEndOfDayModal,
+        submitEndOfDayCheckOut,
 
         leaves,
         applyLeave,
@@ -1415,6 +1637,7 @@ export function CrmProvider({ children }) {
         // Reports
         generateMonthlyPayrollData,
         exportPayrollReportCSV,
+        exportLeadsReportCSV,
       }}
     >
       {children}

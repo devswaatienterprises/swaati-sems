@@ -29,6 +29,7 @@ export default function EmployeeProfilePage({ params }) {
     deactivateEmployee,
     reactivateEmployee,
     getEmployeeKycSignedUrls,
+    t,
   } = useCrm();
 
   const [activeTab, setActiveTab] = useState('overview');
@@ -50,7 +51,7 @@ export default function EmployeeProfilePage({ params }) {
           href="/employees"
           className="text-xs font-semibold text-slate-500 hover:text-slate-800 inline-flex items-center gap-1.5"
         >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Team Members
+          <ArrowLeft className="w-3.5 h-3.5" /> {t('employees.profile.back', 'Back to Team Members')}
         </Link>
       </div>
 
@@ -81,7 +82,7 @@ export default function EmployeeProfilePage({ params }) {
                 {employee.designation} • {employee.department}
               </p>
               <div className="text-xs font-mono text-blue-700 font-bold mt-1">
-                User ID: {employee.userId} • Team Member ID: {employee.id}
+                {t('employees.table.user_id', 'User ID')}: {employee.userId} • {t('employees.table.team_member', 'Team Member')}: {employee.id}
               </div>
             </div>
           </div>
@@ -92,18 +93,18 @@ export default function EmployeeProfilePage({ params }) {
                 {employee.status === 'Active' ? (
                   <button
                     onClick={() => deactivateEmployee(employee.id)}
-                    className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5"
+                    className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
                     <UserX className="w-3.5 h-3.5" />
-                    <span>Deactivate Member</span>
+                    <span>{t('employees.profile.deactivate_btn', 'Deactivate Member')}</span>
                   </button>
                 ) : (
                   <button
                     onClick={() => reactivateEmployee(employee.id)}
-                    className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5"
+                    className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
                     <UserCheck className="w-3.5 h-3.5" />
-                    <span>Reactivate Member</span>
+                    <span>{t('employees.profile.reactivate_btn', 'Reactivate Member')}</span>
                   </button>
                 )}
               </>
@@ -116,35 +117,35 @@ export default function EmployeeProfilePage({ params }) {
       <div className="flex items-center gap-2 border-b border-slate-200 pb-3 mb-6 text-xs font-bold text-slate-600">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-3 py-1.5 rounded-lg transition-colors ${
+          className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
             activeTab === 'overview' ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-600'
           }`}
         >
-          Profile & ID Documents
+          {t('employees.profile.tab_overview', 'Profile & ID Documents')}
         </button>
         <button
           onClick={() => setActiveTab('permissions')}
-          className={`px-3 py-1.5 rounded-lg transition-colors ${
+          className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
             activeTab === 'permissions' ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-600'
           }`}
         >
-          Feature Permissions
+          {t('employees.profile.tab_permissions', 'Feature Permissions')}
         </button>
         <button
           onClick={() => setActiveTab('attendance')}
-          className={`px-3 py-1.5 rounded-lg transition-colors ${
+          className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
             activeTab === 'attendance' ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-600'
           }`}
         >
-          Attendance History
+          {t('employees.profile.tab_attendance', 'Attendance History')}
         </button>
         <button
           onClick={() => setActiveTab('tasks')}
-          className={`px-3 py-1.5 rounded-lg transition-colors ${
+          className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
             activeTab === 'tasks' ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-600'
           }`}
         >
-          Tasks ({empTasks.length})
+          {t('employees.profile.tab_tasks', 'Tasks')} ({empTasks.length})
         </button>
       </div>
 
@@ -153,22 +154,28 @@ export default function EmployeeProfilePage({ params }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
           {/* Employment Details */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
-            <h3 className="font-bold text-slate-800 text-sm">Employment Details</h3>
+            <h3 className="font-bold text-slate-800 text-sm">{t('employees.profile.emp_details', 'Employment Details')}</h3>
             <div className="space-y-2">
               <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Official Mobile:</span>
+                <span className="text-slate-500">{t('employees.profile.official_mobile', 'Official Mobile:')}</span>
                 <span className="font-bold text-slate-900">{employee.mobile}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Official Email:</span>
+                <span className="text-slate-500">{t('employees.profile.official_email', 'Official Email:')}</span>
                 <span className="font-bold text-slate-900">{employee.email}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Joining Date:</span>
+                <span className="text-slate-500">{t('employees.form.role', 'System Role:')}</span>
+                <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  {employee.role ? employee.role.replace('_', ' ') : 'OPERATION HEAD'}
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-100">
+                <span className="text-slate-500">{t('employees.profile.joining_date', 'Joining Date:')}</span>
                 <span className="font-bold text-slate-900">{employee.joiningDate}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Reporting Manager:</span>
+                <span className="text-slate-500">{t('employees.profile.reporting_manager', 'Reporting Manager:')}</span>
                 <span className="font-bold text-slate-900">{employee.reportingManager || 'Shailendra Patil'}</span>
               </div>
             </div>
@@ -178,20 +185,20 @@ export default function EmployeeProfilePage({ params }) {
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-                <CreditCard className="w-4 h-4 text-blue-600" /> Identity Document
+                <CreditCard className="w-4 h-4 text-blue-600" /> {t('employees.profile.identity_doc', 'Identity Document')}
               </h3>
               <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                Verified
+                {t('employees.profile.verified', 'Verified')}
               </span>
             </div>
 
             <div className="space-y-2">
               <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Document Type:</span>
+                <span className="text-slate-500">{t('employees.profile.doc_type', 'Document Type:')}</span>
                 <span className="font-bold text-slate-900">{employee.idCardType || 'Aadhaar Card'}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">ID Number:</span>
+                <span className="text-slate-500">{t('employees.profile.id_number', 'ID Number:')}</span>
                 <span className="font-mono font-bold text-slate-900">{employee.idCardNumber || 'XXXX-XXXX-4589'}</span>
               </div>
             </div>
@@ -220,9 +227,9 @@ export default function EmployeeProfilePage({ params }) {
                 disabled={kycLoading}
                 className="border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 rounded-lg p-3 text-center bg-slate-50 transition-colors group cursor-pointer"
               >
-                <div className="text-[10px] font-bold text-slate-600 mb-1">ID Card Front</div>
+                <div className="text-[10px] font-bold text-slate-600 mb-1">{t('employees.profile.front_scan', 'ID Card Front')}</div>
                 <div className="text-xs font-semibold text-blue-600 group-hover:underline flex items-center justify-center gap-1">
-                  View Secure Scan ↗
+                  {t('employees.profile.view_scan', 'View Secure Scan ↗')}
                 </div>
               </button>
 
@@ -249,9 +256,9 @@ export default function EmployeeProfilePage({ params }) {
                 disabled={kycLoading}
                 className="border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 rounded-lg p-3 text-center bg-slate-50 transition-colors group cursor-pointer"
               >
-                <div className="text-[10px] font-bold text-slate-600 mb-1">ID Card Back</div>
+                <div className="text-[10px] font-bold text-slate-600 mb-1">{t('employees.profile.back_scan', 'ID Card Back')}</div>
                 <div className="text-xs font-semibold text-blue-600 group-hover:underline flex items-center justify-center gap-1">
-                  View Secure Scan ↗
+                  {t('employees.profile.view_scan', 'View Secure Scan ↗')}
                 </div>
               </button>
             </div>
@@ -262,7 +269,7 @@ export default function EmployeeProfilePage({ params }) {
       {activeTab === 'permissions' && (
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs max-w-xl text-xs space-y-3">
           <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-purple-600" /> Active Feature Permissions
+            <ShieldCheck className="w-4 h-4 text-purple-600" /> {t('employees.profile.active_permissions', 'Active Feature Permissions')}
           </h3>
           <div className="divide-y divide-slate-100">
             {['dashboard', 'attendance', 'leave', 'tasks', 'leads', 'products', 'notifications', 'messaging', 'reports'].map((feat) => {
@@ -273,7 +280,7 @@ export default function EmployeeProfilePage({ params }) {
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                     active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
                   }`}>
-                    {active ? 'Active' : 'Inactive'}
+                    {active ? t('common.status.active', 'Active') : t('common.status.inactive', 'Inactive')}
                   </span>
                 </div>
               );
@@ -287,10 +294,10 @@ export default function EmployeeProfilePage({ params }) {
           <table className="w-full text-left">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase">
               <tr>
-                <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4">Check-In</th>
-                <th className="py-3 px-4">Check-Out</th>
-                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4">{t('attendance.table.date', 'Date')}</th>
+                <th className="py-3 px-4">{t('attendance.table.checkin_time', 'Check-In')}</th>
+                <th className="py-3 px-4">{t('attendance.table.checkout_time', 'Check-Out')}</th>
+                <th className="py-3 px-4">{t('attendance.table.status', 'Status')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
@@ -313,16 +320,16 @@ export default function EmployeeProfilePage({ params }) {
 
       {activeTab === 'tasks' && (
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3 text-xs">
-          <h3 className="font-bold text-slate-800 text-sm">Assigned Tasks</h3>
+          <h3 className="font-bold text-slate-800 text-sm">{t('employees.profile.assigned_tasks', 'Assigned Tasks')}</h3>
           <div className="divide-y divide-slate-100">
-            {empTasks.map((t) => (
-              <div key={t.id} className="py-3 flex items-center justify-between">
+            {empTasks.map((tItem) => (
+              <div key={tItem.id} className="py-3 flex items-center justify-between">
                 <div>
-                  <div className="font-bold text-slate-900">{t.title}</div>
-                  <div className="text-[10px] text-slate-400">Assigned By: {t.assignedBy} • Due: {t.deadline}</div>
+                  <div className="font-bold text-slate-900">{tItem.title}</div>
+                  <div className="text-[10px] text-slate-400">Assigned By: {tItem.assignedBy} • Due: {tItem.deadline}</div>
                 </div>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-                  {t.status}
+                  {tItem.status}
                 </span>
               </div>
             ))}

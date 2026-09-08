@@ -153,10 +153,10 @@ export default function ProductsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
             <FileSpreadsheet className="w-6 h-6 text-blue-600" />
-            <span>Product Documents & Technical Library</span>
+            <span>{t('products.title', 'Product Documents & Technical Library')}</span>
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            Single source of truth for technical datasheets, method statements, brochures, and compliance certifications.
+            {t('products.subtitle', 'Single source of truth for technical datasheets, method statements, brochures, and compliance certifications.')}
           </p>
         </div>
       </div>
@@ -169,12 +169,12 @@ export default function ProductsPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search products, brands, datasheets, product codes..."
+            placeholder={t('products.search_placeholder', 'Search products, brands, datasheets, product codes...')}
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>
         <div className="text-xs font-semibold text-slate-500">
-          Showing <strong className="text-slate-900">{filteredProducts.length}</strong> products • Click any row to view documents
+          {t('common.showing', 'Showing')} <strong className="text-slate-900">{filteredProducts.length}</strong> {t('products.showing_products', 'products • Click any row to view documents')}
         </div>
       </div>
 
@@ -184,10 +184,10 @@ export default function ProductsPage() {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-3.5 px-4 min-w-[260px]">Product</th>
-                <th className="py-3.5 px-4 min-w-[130px]">Brand</th>
-                <th className="py-3.5 px-4 min-w-[180px]">Category</th>
-                <th className="py-3.5 px-4 min-w-[180px]">Documents</th>
+                <th className="py-3.5 px-4 min-w-[260px]">{t('products.product', 'Product')}</th>
+                <th className="py-3.5 px-4 min-w-[130px]">{t('products.brand', 'Brand')}</th>
+                <th className="py-3.5 px-4 min-w-[180px]">{t('products.category', 'Category')}</th>
+                <th className="py-3.5 px-4 min-w-[180px]">{t('products.documents', 'Documents')}</th>
                 <th className="py-3.5 px-4 w-12 text-right"></th>
               </tr>
             </thead>
@@ -195,7 +195,7 @@ export default function ProductsPage() {
               {filteredProducts.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">
-                    No products found matching &quot;{searchTerm}&quot;.
+                    {t('products.no_products_found', 'No products found matching')} &quot;{searchTerm}&quot;.
                   </td>
                 </tr>
               ) : (
@@ -245,7 +245,7 @@ export default function ProductsPage() {
                               <span>{getDocTypesSummary(prod.documents)}</span>
                             </span>
                           ) : (
-                            <span className="text-slate-400 text-[11px] font-medium">0 documents</span>
+                            <span className="text-slate-400 text-[11px] font-medium">0 {t('products.documents', 'documents')}</span>
                           )}
                         </td>
 
@@ -267,30 +267,36 @@ export default function ProductsPage() {
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
                                 <div className="font-bold text-slate-900 text-xs flex items-center gap-2">
                                   <FileCheck className="w-4 h-4 text-blue-600" />
-                                  <span>Available Technical Documents for {prod.name} ({docCount})</span>
+                                  <span>{t('products.available_tech_docs', 'Available Technical Documents for')} {prod.name} ({docCount})</span>
                                 </div>
 
-                                {(currentRole === 'ADMIN' || canEdit) && (
+                                {(currentRole === 'ADMIN' || canEdit || canCreate) && (
                                   <button
                                     onClick={(e) => handleUploadClick(prod, e)}
-                                    className="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold shadow-xs inline-flex items-center gap-1.5 transition-colors self-start sm:self-auto cursor-pointer"
+                                    className="text-xs px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold shadow-xs inline-flex items-center gap-1.5 transition-colors self-start sm:self-auto cursor-pointer"
                                   >
                                     <Plus className="w-3.5 h-3.5" />
-                                    <span>Upload Document</span>
+                                    <span>{t('products.add_document', '+ Add Document')}</span>
                                   </button>
                                 )}
                               </div>
 
                               {(!prod.documents || prod.documents.length === 0) ? (
-                                <div className="p-6 bg-slate-50 rounded-xl text-center text-slate-400 text-xs font-medium space-y-1">
-                                  <div>No documents currently uploaded for this product.</div>
-                                  {(currentRole === 'ADMIN' || canEdit) && (
-                                    <button
-                                      onClick={(e) => handleUploadClick(prod, e)}
-                                      className="text-blue-600 font-bold text-xs hover:underline inline-block mt-1 cursor-pointer"
-                                    >
-                                      Upload Technical Datasheet (TDS)
-                                    </button>
+                                <div className="p-8 bg-slate-50 rounded-xl text-center text-slate-500 text-xs font-medium space-y-3 border border-dashed border-slate-200">
+                                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+                                    <FileText className="w-5 h-5" />
+                                  </div>
+                                  <div>{t('products.no_docs_uploaded', 'No documents currently uploaded for this product.')}</div>
+                                  {(currentRole === 'ADMIN' || canEdit || canCreate) && (
+                                    <div>
+                                      <button
+                                        onClick={(e) => handleUploadClick(prod, e)}
+                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs shadow-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                                      >
+                                        <Plus className="w-3.5 h-3.5" />
+                                        <span>{t('products.add_document', '+ Add Document')}</span>
+                                      </button>
+                                    </div>
                                   )}
                                 </div>
                               ) : (
@@ -328,17 +334,17 @@ export default function ProductsPage() {
                                           className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
                                         >
                                           <Download className="w-3.5 h-3.5 text-blue-600" />
-                                          <span>Download</span>
+                                          <span>{t('products.download', 'Download')}</span>
                                         </button>
 
                                         {(currentRole === 'ADMIN' || canEdit) && (
                                           <button
                                             onClick={(e) => handleReplaceClick(prod, doc, e)}
                                             className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                                            title="Replace with updated version"
+                                            title={t('products.replace_doc', 'Replace with updated version')}
                                           >
                                             <RefreshCw className="w-3.5 h-3.5" />
-                                            <span>Replace</span>
+                                            <span>{t('products.replace', 'Replace')}</span>
                                           </button>
                                         )}
 
@@ -349,7 +355,7 @@ export default function ProductsPage() {
                                             title="Delete document"
                                           >
                                             <Trash2 className="w-3.5 h-3.5" />
-                                            <span>Delete</span>
+                                            <span>{t('products.delete', 'Delete')}</span>
                                           </button>
                                         )}
                                       </div>

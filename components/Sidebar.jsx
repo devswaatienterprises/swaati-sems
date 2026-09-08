@@ -128,13 +128,19 @@ export default function Sidebar({ isOpen, onClose }) {
         {/* Brand Header */}
         <div className="h-16 shrink-0 flex items-center justify-between px-6 bg-slate-950 border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-700 flex items-center justify-center text-white font-black text-xs tracking-wider shadow-md shadow-blue-600/30 border border-blue-400/30">
-              SEMS
+            <div className="w-10 h-10 rounded-xl bg-white p-1.5 flex items-center justify-center shadow-sm shadow-black/20 shrink-0">
+              <img
+                src="/images/se-logo.webp"
+                alt="Swaati Enterprises Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <div className="font-bold text-white tracking-wide text-sm leading-tight flex items-center gap-1.5">
                 <span>SEMS</span>
-                <span className="text-[10px] bg-blue-500/20 text-blue-300 font-bold px-1.5 py-0.2 rounded border border-blue-500/30">PORTAL</span>
+                <span className="text-[10px] bg-blue-500/20 text-blue-300 font-bold px-1.5 py-0.2 rounded border border-blue-500/30">
+                  {t('nav.portal_badge', 'PORTAL')}
+                </span>
               </div>
               <div className="text-[10px] text-slate-400 font-medium tracking-wide">
                 Swaati Enterprises
@@ -166,7 +172,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
             }`}
           >
-            {currentRole || 'STAFF'}
+            {currentRole === 'ADMIN' ? (t('role_admin') || 'ADMIN') : (t('role_employee') || 'STAFF')}
           </span>
         </div>
 
@@ -199,16 +205,16 @@ export default function Sidebar({ isOpen, onClose }) {
         <div className="shrink-0 px-3.5 pt-2 pb-1 border-t border-slate-800/80">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 transition-all text-left"
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 transition-all text-left cursor-pointer"
           >
             <LogOut className="w-4 h-4 text-rose-400" />
-            <span>{t('logout') || 'Logout'}</span>
+            <span>{t('logout', 'Logout')}</span>
           </button>
         </div>
 
         {/* Footer Info */}
         <div className="shrink-0 p-4 border-t border-slate-800 text-[10px] text-slate-500 text-center font-medium">
-          SEMS v2.0 • Swaati Enterprises © 2026
+          {t('nav.footer_info', 'SEMS v2.0 • Swaati Enterprises © 2026')}
         </div>
       </aside>
     </>

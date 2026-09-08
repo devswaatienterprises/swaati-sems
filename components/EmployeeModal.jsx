@@ -30,6 +30,7 @@ import {
   Sparkles,
   Shield,
   ShieldAlert,
+  Trash2,
 } from 'lucide-react';
 import {
   DEFAULT_PERMISSIONS,
@@ -39,7 +40,7 @@ import {
 import { useCrm } from '@/context/CrmContext';
 
 export default function EmployeeModal({ isOpen, onClose, onSave, initialData = null }) {
-  const { getEmployeeKycSignedUrls } = useCrm();
+  const { getEmployeeKycSignedUrls, deleteEmployeeDocument, t } = useCrm();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -49,6 +50,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
     mobile: '',
     department: 'Technical & Operations',
     designation: 'Site Engineer',
+    role: 'OPERATION_HEAD',
     joiningDate: new Date().toISOString().split('T')[0],
     reportingManager: 'Shailendra Patil',
     employmentStatus: 'Active',
@@ -98,6 +100,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
 
       setFormData({
         ...initialData,
+        role: initialData.role || initialData.user?.role || 'OPERATION_HEAD',
         idCardType: initialData.idCardType || doc?.documentType || 'Aadhaar Card',
         idCardNumber: initialData.idCardNumber || doc?.documentNumber || '',
         idCardFrontUrl: frontUrl,
@@ -125,6 +128,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
         mobile: '',
         department: 'Technical & Operations',
         designation: 'Site Engineer',
+        role: 'OPERATION_HEAD',
         joiningDate: new Date().toISOString().split('T')[0],
         reportingManager: 'Shailendra Patil',
         employmentStatus: 'Active',
@@ -257,6 +261,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
     if (!preset) return;
     setFormData((prev) => ({
       ...prev,
+      role: presetKey,
       permissions: { ...preset },
     }));
   };
@@ -338,6 +343,66 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
     }
   };
 
+  const handleDeleteFront = async () => {
+    if (!window.confirm('Are you sure you want to remove the front ID document?')) {
+      return;
+    }
+
+    if (frontFile) {
+      setFrontFile(null);
+      setFrontPreviewUrl(null);
+      if (frontInputRef.current) frontInputRef.current.value = '';
+    }
+
+    if (formData.idCardFrontUrl) {
+      const doc = initialData?.documents?.[0];
+      const docId = doc?.id;
+      const empId = initialData?.realId || initialData?.id;
+
+      if (docId && empId && deleteEmployeeDocument && !formData.idCardBackUrl && !backFile) {
+        // If no back document exists, deleting the KYC doc cleans the db record completely
+        try {
+          await deleteEmployeeDocument(empId, docId);
+        } catch (e) {
+          console.warn('[EmployeeModal Delete KYC Front]:', e);
+        }
+      }
+
+      setFormData((prev) => ({ ...prev, idCardFrontUrl: '' }));
+      setExistingFrontSignedUrl(null);
+    }
+  };
+
+  const handleDeleteBack = async () => {
+    if (!window.confirm('Are you sure you want to remove the back ID document?')) {
+      return;
+    }
+
+    if (backFile) {
+      setBackFile(null);
+      setBackPreviewUrl(null);
+      if (backInputRef.current) backInputRef.current.value = '';
+    }
+
+    if (formData.idCardBackUrl) {
+      const doc = initialData?.documents?.[0];
+      const docId = doc?.id;
+      const empId = initialData?.realId || initialData?.id;
+
+      if (docId && empId && deleteEmployeeDocument && !formData.idCardFrontUrl && !frontFile) {
+        // If no front document exists, deleting the KYC doc cleans the db record completely
+        try {
+          await deleteEmployeeDocument(empId, docId);
+        } catch (e) {
+          console.warn('[EmployeeModal Delete KYC Back]:', e);
+        }
+      }
+
+      setFormData((prev) => ({ ...prev, idCardBackUrl: '' }));
+      setExistingBackSignedUrl(null);
+    }
+  };
+
   const hasFrontDoc = Boolean(frontFile || formData.idCardFrontUrl);
   const isFrontPdf = frontFile
     ? (frontFile.type === 'application/pdf' || frontFile.name.toLowerCase().endsWith('.pdf'))
@@ -381,10 +446,10 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
             </div>
             <div>
               <h3 className="font-bold text-slate-800 text-sm">
-                {initialData ? 'Edit Team Member Profile' : 'Add New Team Member'}
+                {initialData ? t('employees.modal.edit_title', 'Edit Team Member Profile') : t('employees.modal.add_title', 'Add New Team Member')}
               </h3>
               <p className="text-[11px] text-slate-500 font-medium">
-                Enter team member details, identity documents, and assign feature permissions.
+                {t('employees.modal.subtitle', 'Enter team member details, identity documents, and assign feature permissions.')}
               </p>
             </div>
           </div>
@@ -398,31 +463,31 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
           <button
             type="button"
             onClick={() => setActiveTab('basic')}
-            className={`py-3 px-3 border-b-2 transition-colors ${
+            className={`py-3 px-3 border-b-2 transition-colors cursor-pointer ${
               activeTab === 'basic' ? 'border-blue-600 text-blue-600' : 'border-transparent hover:text-slate-900'
             }`}
           >
-            1. Basic Information
+            {t('employees.modal.tab_basic', '1. Basic Information')}
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('documents')}
-            className={`py-3 px-3 border-b-2 transition-colors flex items-center gap-1.5 ${
+            className={`py-3 px-3 border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'documents' ? 'border-blue-600 text-blue-600' : 'border-transparent hover:text-slate-900'
             }`}
           >
             <CreditCard className="w-3.5 h-3.5" />
-            <span>2. Identity Documents</span>
+            <span>{t('employees.modal.tab_docs', '2. Identity Documents')}</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('permissions')}
-            className={`py-3 px-3 border-b-2 transition-colors flex items-center gap-1.5 ${
+            className={`py-3 px-3 border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'permissions' ? 'border-blue-600 text-blue-600' : 'border-transparent hover:text-slate-900'
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>3. Feature Permissions</span>
+            <span>{t('employees.modal.tab_permissions', '3. Feature Permissions')}</span>
           </button>
         </div>
 
@@ -433,7 +498,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Full Name *</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('employees.form.full_name', 'Full Name')} *</label>
                   <input
                     type="text"
                     required
@@ -445,7 +510,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">System User ID *</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('employees.form.system_user_id', 'System User ID')} *</label>
                   <input
                     type="text"
                     required
@@ -462,7 +527,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Email Address *</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('employees.form.email_address', 'Email Address')} *</label>
                   <input
                     type="email"
                     required
@@ -474,7 +539,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Mobile Number *</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('employees.form.mobile_number', 'Mobile Number')} *</label>
                   <input
                     type="tel"
                     required
@@ -486,50 +551,84 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                 </div>
               </div>
 
-              {!initialData && (
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Initial Password *</label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="Provide temporary login password"
-                      className="w-full pl-3 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {initialData ? t('employees.form.password_credentials', 'Password / Credentials') : `${t('employees.form.initial_password', 'Initial Password')} *`}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required={!initialData}
+                    value={formData.password || ''}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder={
+                      initialData
+                        ? '•••••••• (Enter new password to change)'
+                        : 'Provide temporary login password'
+                    }
+                    className="w-full pl-3 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
-              )}
+                {initialData && (
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    {t('employees.form.password_hint', 'Default is hidden. Click the eye icon to view or type a new password to update.')}
+                  </p>
+                )}
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Department</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('employees.form.role', 'System Role')} *</label>
+                  <select
+                    value={formData.role || 'OPERATION_HEAD'}
+                    onChange={(e) => {
+                      const selectedRole = e.target.value;
+                      const preset = ROLE_PERMISSION_PRESETS[selectedRole];
+                      setFormData((prev) => ({
+                        ...prev,
+                        role: selectedRole,
+                        permissions: preset ? { ...preset } : prev.permissions,
+                      }));
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  >
+                    <option value="ADMIN">{t('role.admin', 'Admin (Full Access)')}</option>
+                    <option value="OPERATION_HEAD">{t('role.operation_head', 'Operation Head')}</option>
+                    <option value="SALES">{t('role.sales', 'Sales')}</option>
+                    <option value="ACCOUNTANT">{t('role.accountant', 'Accountant')}</option>
+                    <option value="WAREHOUSE_MANAGER">{t('role.warehouse_manager', 'Warehouse Manager')}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">{t('employees.form.department', 'Department')}</label>
                   <select
                     value={formData.department}
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   >
-                    <option value="Technical & Operations">Technical & Operations</option>
-                    <option value="Sales & Business Dev">Sales & Business Dev</option>
-                    <option value="Site Execution">Site Execution</option>
-                    <option value="Customer Support">Customer Support</option>
-                    <option value="Executive Management">Executive Management</option>
+                    <option value="Technical & Operations">{t('dept.technical_ops', 'Technical & Operations')}</option>
+                    <option value="Sales & Business Dev">{t('dept.sales_dev', 'Sales & Business Dev')}</option>
+                    <option value="Site Execution">{t('dept.site_execution', 'Site Execution')}</option>
+                    <option value="Customer Support">{t('dept.customer_support', 'Customer Support')}</option>
+                    <option value="Executive Management">{t('dept.executive_mgmt', 'Executive Management')}</option>
                   </select>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Designation</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('employees.form.designation', 'Designation')}</label>
                   <input
                     type="text"
                     value={formData.designation}
@@ -538,11 +637,9 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Joining Date</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('employees.form.joining_date', 'Joining Date')}</label>
                   <input
                     type="date"
                     value={formData.joiningDate}
@@ -550,9 +647,11 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Reporting Manager</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('employees.form.reporting_manager', 'Reporting Manager')}</label>
                   <input
                     type="text"
                     value={formData.reportingManager}
@@ -569,12 +668,12 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
           {activeTab === 'documents' && (
             <div className="space-y-4">
               <div className="p-3 bg-blue-50 rounded-xl border border-blue-200/80 text-blue-800 text-[11px] leading-relaxed">
-                <strong>Secure Identity Storage:</strong> Identity document images are stored securely and accessible only to authorized administrators.
+                <strong>{t('employees.kyc.storage_note', 'Secure Identity Storage: Identity document images are stored securely and accessible only to authorized administrators.')}</strong>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">ID Card Type *</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('employees.kyc.id_card_type', 'ID Card Type')} *</label>
                   <select
                     value={formData.idCardType}
                     onChange={(e) => setFormData({ ...formData, idCardType: e.target.value })}
@@ -590,7 +689,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">ID Card Number *</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('employees.kyc.id_card_number', 'ID Card Number')} *</label>
                   <input
                     type="text"
                     value={formData.idCardNumber}
@@ -622,15 +721,15 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                       <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-2">
                         <ImageIcon className="w-4 h-4" />
                       </div>
-                      <div className="font-bold text-slate-700 mb-0.5 text-xs">ID Card Front Image</div>
-                      <div className="text-[10px] text-slate-500 mb-2.5">PNG, JPG, PDF up to 10MB</div>
+                      <div className="font-bold text-slate-700 mb-0.5 text-xs">{t('employees.kyc.front_image_title', 'ID Card Front Image')}</div>
+                      <div className="text-[10px] text-slate-500 mb-2.5">{t('employees.kyc.format_hint', 'PNG, JPG, PDF up to 10MB')}</div>
                       <button
                         type="button"
                         onClick={() => frontInputRef.current?.click()}
                         className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[11px] transition-colors"
                       >
                         <Upload className="w-3 h-3" />
-                        <span>Upload Front</span>
+                        <span>{t('employees.kyc.upload_front', 'Upload Front')}</span>
                       </button>
                     </div>
                   ) : (
@@ -639,10 +738,10 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                         <div className="flex items-center justify-between gap-2 mb-2.5">
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                             <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                            <span>Uploaded</span>
+                            <span>{t('employees.kyc.uploaded', 'Uploaded')}</span>
                           </span>
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            Front Document
+                            {t('employees.kyc.front_doc', 'Front Document')}
                           </span>
                         </div>
 
@@ -672,8 +771,8 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                             </div>
                             <div className="text-[10px] text-slate-400 font-medium mt-0.5">
                               {frontFile
-                                ? `${(frontFile.size / 1024).toFixed(0)} KB • Ready to save`
-                                : 'Saved in cloud storage'}
+                                ? `${(frontFile.size / 1024).toFixed(0)} KB • ${t('employees.kyc.ready_to_save', 'Ready to save')}`
+                                : t('employees.kyc.saved_cloud', 'Saved in cloud storage')}
                             </div>
                           </div>
                         </div>
@@ -683,20 +782,29 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                         <button
                           type="button"
                           onClick={handleViewFront}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-slate-600 hover:text-blue-600 hover:bg-blue-50/70 rounded-md text-[11px] font-bold transition-colors"
-                          title="View document"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-slate-600 hover:text-blue-600 hover:bg-blue-50/70 rounded-md text-[11px] font-bold transition-colors cursor-pointer"
+                          title="View document in new tab"
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          <span>View</span>
+                          <span>{t('common.buttons.view', 'View')}</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => frontInputRef.current?.click()}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-[11px] font-bold transition-colors"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-[11px] font-bold transition-colors cursor-pointer"
                           title="Upload a different document"
                         >
                           <RefreshCw className="w-3 h-3" />
-                          <span>Replace</span>
+                          <span>{t('common.buttons.replace', 'Replace')}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleDeleteFront}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-md text-[11px] font-bold transition-colors cursor-pointer"
+                          title="Remove document"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>{t('common.buttons.delete', 'Delete')}</span>
                         </button>
                       </div>
                     </div>
@@ -723,15 +831,15 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                       <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-2">
                         <ImageIcon className="w-4 h-4" />
                       </div>
-                      <div className="font-bold text-slate-700 mb-0.5 text-xs">ID Card Back Image</div>
-                      <div className="text-[10px] text-slate-500 mb-2.5">PNG, JPG, PDF up to 10MB</div>
+                      <div className="font-bold text-slate-700 mb-0.5 text-xs">{t('employees.kyc.back_image_title', 'ID Card Back Image')}</div>
+                      <div className="text-[10px] text-slate-500 mb-2.5">{t('employees.kyc.format_hint', 'PNG, JPG, PDF up to 10MB')}</div>
                       <button
                         type="button"
                         onClick={() => backInputRef.current?.click()}
                         className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[11px] transition-colors"
                       >
                         <Upload className="w-3 h-3" />
-                        <span>Upload Back</span>
+                        <span>{t('employees.kyc.upload_back', 'Upload Back')}</span>
                       </button>
                     </div>
                   ) : (
@@ -740,10 +848,10 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                         <div className="flex items-center justify-between gap-2 mb-2.5">
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                             <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                            <span>Uploaded</span>
+                            <span>{t('employees.kyc.uploaded', 'Uploaded')}</span>
                           </span>
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            Back Document
+                            {t('employees.kyc.back_doc', 'Back Document')}
                           </span>
                         </div>
 
@@ -773,8 +881,8 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                             </div>
                             <div className="text-[10px] text-slate-400 font-medium mt-0.5">
                               {backFile
-                                ? `${(backFile.size / 1024).toFixed(0)} KB • Ready to save`
-                                : 'Saved in cloud storage'}
+                                ? `${(backFile.size / 1024).toFixed(0)} KB • ${t('employees.kyc.ready_to_save', 'Ready to save')}`
+                                : t('employees.kyc.saved_cloud', 'Saved in cloud storage')}
                             </div>
                           </div>
                         </div>
@@ -784,20 +892,29 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                         <button
                           type="button"
                           onClick={handleViewBack}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-slate-600 hover:text-blue-600 hover:bg-blue-50/70 rounded-md text-[11px] font-bold transition-colors"
-                          title="View document"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-slate-600 hover:text-blue-600 hover:bg-blue-50/70 rounded-md text-[11px] font-bold transition-colors cursor-pointer"
+                          title="View document in new tab"
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          <span>View</span>
+                          <span>{t('common.buttons.view', 'View')}</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => backInputRef.current?.click()}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-[11px] font-bold transition-colors"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-[11px] font-bold transition-colors cursor-pointer"
                           title="Upload a different document"
                         >
                           <RefreshCw className="w-3 h-3" />
-                          <span>Replace</span>
+                          <span>{t('common.buttons.replace', 'Replace')}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleDeleteBack}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-md text-[11px] font-bold transition-colors cursor-pointer"
+                          title="Remove document"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>{t('common.buttons.delete', 'Delete')}</span>
                         </button>
                       </div>
                     </div>
@@ -818,9 +935,9 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                       <SlidersHorizontal className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-slate-800">Two-Level Permission Architecture</div>
+                      <div className="text-xs font-bold text-slate-800">{t('employees.perms.architecture_title', 'Two-Level Permission Architecture')}</div>
                       <div className="text-[10px] text-slate-500 font-medium">
-                        Level 1 toggles module visibility; Level 2 controls specific functional actions.
+                        {t('employees.perms.architecture_desc', 'Level 1 toggles module visibility; Level 2 controls specific functional actions.')}
                       </div>
                     </div>
                   </div>
@@ -832,14 +949,14 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                       onClick={() => toggleAllGlobalFeatures(true)}
                       className="px-2 py-1 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors cursor-pointer"
                     >
-                      Enable All
+                      {t('employees.perms.enable_all', 'Enable All')}
                     </button>
                     <button
                       type="button"
                       onClick={() => toggleAllGlobalFeatures(false)}
                       className="px-2 py-1 text-[10px] font-bold text-slate-600 bg-white hover:bg-slate-100 rounded border border-slate-200 transition-colors cursor-pointer"
                     >
-                      Disable All
+                      {t('employees.perms.disable_all', 'Disable All')}
                     </button>
                   </div>
                 </div>
@@ -848,28 +965,42 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                 <div className="pt-2.5 border-t border-slate-200/70 flex flex-wrap items-center gap-2">
                   <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
                     <Sparkles className="w-3 h-3 text-amber-500" />
-                    Presets:
+                    {t('employees.perms.presets_label', 'Presets:')}
                   </span>
                   <button
                     type="button"
-                    onClick={() => applyPreset('EMPLOYEE')}
+                    onClick={() => applyPreset('OPERATION_HEAD')}
                     className="px-2.5 py-1 text-[11px] font-semibold bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors cursor-pointer"
                   >
-                    Site Engineer / Employee
+                    {t('role.operation_head', 'Operation Head')}
                   </button>
                   <button
                     type="button"
-                    onClick={() => applyPreset('MANAGER')}
+                    onClick={() => applyPreset('SALES')}
                     className="px-2.5 py-1 text-[11px] font-semibold bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors cursor-pointer"
                   >
-                    Operations / Sales Lead
+                    {t('role.sales', 'Sales')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('ACCOUNTANT')}
+                    className="px-2.5 py-1 text-[11px] font-semibold bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                  >
+                    {t('role.accountant', 'Accountant')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('WAREHOUSE_MANAGER')}
+                    className="px-2.5 py-1 text-[11px] font-semibold bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                  >
+                    {t('role.warehouse_manager', 'Warehouse Manager')}
                   </button>
                   <button
                     type="button"
                     onClick={() => applyPreset('ADMIN')}
                     className="px-2.5 py-1 text-[11px] font-semibold bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg border border-purple-200 transition-colors cursor-pointer"
                   >
-                    Full Administrator
+                    {t('role.admin', 'Admin (Full Access)')}
                   </button>
                 </div>
               </div>
@@ -916,11 +1047,11 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                               {isFeatureActive ? (
                                 <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
                                   <CheckCheck className="w-2.5 h-2.5" />
-                                  {activeSubCount}/{totalSubCount} actions
+                                  {activeSubCount}/{totalSubCount} {t('employees.perms.actions_count', 'actions')}
                                 </span>
                               ) : (
                                 <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-200 text-slate-500">
-                                  Disabled
+                                  {t('employees.perms.disabled', 'Disabled')}
                                 </span>
                               )}
                             </div>
@@ -970,14 +1101,14 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                             <div className="flex items-center justify-between p-2.5 bg-amber-50/70 border border-amber-200 rounded-lg text-amber-800 text-[11px]">
                               <div className="flex items-center gap-2">
                                 <ShieldAlert className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                <span>Feature is turned OFF. Turn on to configure granular actions.</span>
+                                <span>{t('employees.perms.feature_off_warning', 'Feature is turned OFF. Turn on to configure granular actions.')}</span>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => toggleFeature(schema.key)}
                                 className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] rounded cursor-pointer"
                               >
-                                Enable Feature
+                                {t('employees.perms.enable_feature_btn', 'Enable Feature')}
                               </button>
                             </div>
                           ) : (
@@ -985,7 +1116,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                               {/* Sub-actions Toolbar */}
                               <div className="flex items-center justify-between text-[11px] pb-1 border-b border-slate-200/60">
                                 <span className="font-bold text-slate-600 uppercase tracking-wider text-[9px]">
-                                  Granular Actions ({schema.label})
+                                  {t('employees.perms.granular_actions', 'Granular Actions')} ({schema.label})
                                 </span>
                                 <div className="flex items-center gap-2">
                                   <button
@@ -993,7 +1124,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                                     onClick={() => setAllActionsForFeature(schema.key, true)}
                                     className="text-[10px] font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                                   >
-                                    Select All
+                                    {t('employees.perms.select_all', 'Select All')}
                                   </button>
                                   <span className="text-slate-300">•</span>
                                   <button
@@ -1001,7 +1132,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                                     onClick={() => setAllActionsForFeature(schema.key, false)}
                                     className="text-[10px] font-bold text-slate-500 hover:text-slate-700 hover:underline cursor-pointer"
                                   >
-                                    Deselect All
+                                    {t('employees.perms.deselect_all', 'Deselect All')}
                                   </button>
                                 </div>
                               </div>
@@ -1061,22 +1192,22 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
           {/* Footer Buttons */}
           <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
             <div className="text-[11px] text-slate-400 font-medium">
-              * All required fields must be completed.
+              {t('employees.form.required_hint', '* All required fields must be completed.')}
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-lg"
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-lg cursor-pointer"
               >
-                Cancel
+                {t('common.buttons.cancel', 'Cancel')}
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-sm shadow-blue-600/20"
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-sm shadow-blue-600/20 cursor-pointer"
               >
-                {initialData ? 'Save Changes' : 'Add Team Member'}
+                {initialData ? t('common.buttons.save', 'Save Changes') : t('employees.btn.add_member', 'Add Team Member')}
               </button>
             </div>
           </div>

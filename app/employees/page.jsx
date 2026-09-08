@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import Shell from '@/components/Shell';
 import EmployeeModal from '@/components/EmployeeModal';
+import EmployeeActivityModal from '@/components/EmployeeActivityModal';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useCrm } from '@/context/CrmContext';
 import {
@@ -18,6 +20,9 @@ import {
   Mail,
   Building2,
   CheckCircle2,
+  MoreVertical,
+  History,
+  User,
 } from 'lucide-react';
 
 export default function EmployeesPage() {
@@ -39,9 +44,26 @@ export default function EmployeesPage() {
   // Modals & Editing
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
+  const [selectedActivityEmployee, setSelectedActivityEmployee] = useState(null);
+
+  // Dropdown state for three-dot menu
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   // Deactivate Confirm Modal
   const [deactivateTarget, setDeactivateTarget] = useState(null);
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setOpenMenuId(null);
+    };
+    if (openMenuId) {
+      window.addEventListener('click', handleOutsideClick);
+    }
+    return () => {
+      window.removeEventListener('click', handleOutsideClick);
+    };
+  }, [openMenuId]);
 
   // Filter employees
   const filteredEmployees = employees.filter((emp) => {
@@ -110,13 +132,20 @@ export default function EmployeesPage() {
         }}
       />
 
+      {/* Admin-only Activity History Modal */}
+      <EmployeeActivityModal
+        isOpen={!!selectedActivityEmployee}
+        employee={selectedActivityEmployee}
+        onClose={() => setSelectedActivityEmployee(null)}
+      />
+
       {/* Deactivate Confirmation Modal */}
       <ConfirmModal
         isOpen={!!deactivateTarget}
-        title="Deactivate Team Member"
+        title={t('employees.modal.deactivate_title', 'Deactivate Team Member')}
         message={`Are you sure you want to deactivate ${deactivateTarget?.name}? They will no longer be able to log in or access SEMS features. Their historical attendance, leaves, and task records will remain safely preserved.`}
-        confirmText="Deactivate Member"
-        cancelText="Cancel"
+        confirmText={t('employees.modal.deactivate_confirm_btn', 'Deactivate Member')}
+        cancelText={t('common.buttons.cancel', 'Cancel')}
         isDestructive={true}
         onConfirm={handleConfirmDeactivate}
         onCancel={() => setDeactivateTarget(null)}
@@ -127,10 +156,10 @@ export default function EmployeesPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
             <Users className="w-6 h-6 text-blue-600" />
-            <span>Team Members</span>
+            <span>{t('employees.page.title', 'Team Members')}</span>
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            Manage company team member profiles, system access, identity documents, and credentials.
+            {t('employees.page.subtitle', 'Manage company team member profiles, system access, identity documents, and credentials.')}
           </p>
         </div>
 
@@ -140,10 +169,10 @@ export default function EmployeesPage() {
               setEditingEmployee(null);
               setIsAddModalOpen(true);
             }}
-            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs shadow-sm shadow-blue-600/20 flex items-center justify-center gap-2 transition-all shrink-0"
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs shadow-sm shadow-blue-600/20 flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
-            <span>Add Team Member</span>
+            <span>{t('employees.btn.add_member', 'Add Team Member')}</span>
           </button>
         )}
       </div>
@@ -152,7 +181,7 @@ export default function EmployeesPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Total Members</div>
+            <div className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">{t('employees.kpi.total_members', 'Total Members')}</div>
             <div className="text-2xl font-black text-slate-900 mt-1">{employees.length}</div>
           </div>
           <Users className="w-7 h-7 text-blue-500 opacity-80" />
@@ -160,7 +189,7 @@ export default function EmployeesPage() {
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Active Members</div>
+            <div className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">{t('employees.kpi.active_members', 'Active Members')}</div>
             <div className="text-2xl font-black text-emerald-600 mt-1">{activeCount}</div>
           </div>
           <UserCheck className="w-7 h-7 text-emerald-500 opacity-80" />
@@ -168,7 +197,7 @@ export default function EmployeesPage() {
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Deactivated</div>
+            <div className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">{t('employees.kpi.deactivated', 'Deactivated')}</div>
             <div className="text-2xl font-black text-slate-500 mt-1">{inactiveCount}</div>
           </div>
           <UserX className="w-7 h-7 text-slate-400 opacity-80" />
@@ -176,7 +205,7 @@ export default function EmployeesPage() {
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Departments</div>
+            <div className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">{t('employees.kpi.departments', 'Departments')}</div>
             <div className="text-2xl font-black text-purple-600 mt-1">4</div>
           </div>
           <Building2 className="w-7 h-7 text-purple-500 opacity-80" />
@@ -192,7 +221,7 @@ export default function EmployeesPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search name, User ID, mobile, email, department..."
+            placeholder={t('employees.search.placeholder', 'Search name, User ID, mobile, email, department...')}
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>
@@ -201,27 +230,27 @@ export default function EmployeesPage() {
         <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-start md:justify-end text-xs">
           {/* Status Filter: Default Active Members */}
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
-            <span className="text-slate-400 font-bold text-[11px]">Status:</span>
+            <span className="text-slate-400 font-bold text-[11px]">{t('common.labels.status', 'Status')}:</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
             >
-              <option value="ACTIVE">Active Members ({activeCount})</option>
-              <option value="INACTIVE">Deactivated Members ({inactiveCount})</option>
-              <option value="ALL">All Members ({employees.length})</option>
+              <option value="ACTIVE">{t('employees.filter.status_active', 'Active Members')} ({activeCount})</option>
+              <option value="INACTIVE">{t('employees.filter.status_inactive', 'Deactivated Members')} ({inactiveCount})</option>
+              <option value="ALL">{t('employees.filter.status_all', 'All Members')} ({employees.length})</option>
             </select>
           </div>
 
           {/* Department Filter */}
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
-            <span className="text-slate-400 font-bold text-[11px]">Dept:</span>
+            <span className="text-slate-400 font-bold text-[11px]">{t('employees.kpi.departments', 'Dept')}:</span>
             <select
               value={deptFilter}
               onChange={(e) => setDeptFilter(e.target.value)}
               className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
             >
-              <option value="ALL">All Departments</option>
+              <option value="ALL">{t('employees.filter.all_departments', 'All Departments')}</option>
               <option value="Technical & Operations">Technical & Operations</option>
               <option value="Sales & Business Dev">Sales & Business Dev</option>
               <option value="Site Execution">Site Execution</option>
@@ -232,18 +261,18 @@ export default function EmployeesPage() {
         </div>
       </div>
 
-      {/* Team Members Table (No Permissions column, No separate Actions/View column, single Edit column) */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+      {/* Team Members Table with Vertical Three-Dot More Menu */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-visible">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider sticky top-0 z-10 text-[11px]">
               <tr>
-                <th className="py-3.5 px-4 min-w-[200px]">Team Member</th>
-                <th className="py-3.5 px-4 whitespace-nowrap">User ID</th>
-                <th className="py-3.5 px-4 min-w-[200px]">Department & Designation</th>
-                <th className="py-3.5 px-4 min-w-[220px]">Mobile & Email</th>
-                <th className="py-3.5 px-4 whitespace-nowrap">Status</th>
-                <th className="py-3.5 px-4 text-right whitespace-nowrap">Edit</th>
+                <th className="py-3.5 px-4 min-w-[200px]">{t('employees.table.team_member', 'Team Member')}</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">{t('employees.table.user_id', 'User ID')}</th>
+                <th className="py-3.5 px-4 min-w-[200px]">{t('employees.table.dept_designation', 'Department & Designation')}</th>
+                <th className="py-3.5 px-4 min-w-[220px]">{t('employees.table.mobile_email', 'Mobile & Email')}</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">{t('common.labels.status', 'Status')}</th>
+                <th className="py-3.5 px-4 text-right whitespace-nowrap">{t('common.labels.actions', 'More')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -253,7 +282,7 @@ export default function EmployeesPage() {
                   <td className="py-3.5 px-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl bg-slate-800 text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0">
-                        {emp.avatar || emp.name.slice(0, 2).toUpperCase()}
+                        {emp.avatar || emp.name?.slice(0, 2).toUpperCase()}
                       </div>
                       <div>
                         <div className="font-bold text-slate-900 leading-tight">{emp.name}</div>
@@ -296,44 +325,101 @@ export default function EmployeesPage() {
                           : 'bg-slate-200 text-slate-700 border border-slate-300'
                       }`}
                     >
-                      {emp.status}
+                      {emp.status === 'Active' ? t('common.labels.active', 'Active') : t('common.labels.inactive', 'Inactive')}
                     </span>
                   </td>
 
-                  {/* Edit Column (Single clean control) */}
+                  {/* More [ ⋮ ] Menu Action Column */}
                   <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="relative inline-block text-left">
                       <button
-                        onClick={() => setEditingEmployee(emp)}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-bold rounded-lg text-xs transition-colors inline-flex items-center gap-1.5"
-                        title="Edit Team Member Profile & Permissions"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === emp.id ? null : emp.id);
+                        }}
+                        className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                          openMenuId === emp.id
+                            ? 'bg-blue-50 text-blue-600 border-blue-200'
+                            : 'bg-white text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-slate-200'
+                        }`}
+                        title={t('common.labels.more_options', 'More options')}
                       >
-                        <Edit2 className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Edit</span>
+                        <MoreVertical className="w-4 h-4" />
                       </button>
 
-                      {/* Optional inline activation if viewing deactivated members */}
-                      {currentRole === 'ADMIN' && emp.role !== 'ADMIN' && (
-                        <>
-                          {emp.status === 'Inactive' ? (
+                      {openMenuId === emp.id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100 text-left"
+                        >
+                          {/* 1. View Profile */}
+                          <Link
+                            href={`/employees/${emp.realId || emp.id}`}
+                            onClick={() => setOpenMenuId(null)}
+                            className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors"
+                          >
+                            <User className="w-4 h-4 text-slate-400" />
+                            <span>{t('employees.menu.view_profile', 'View Profile')}</span>
+                          </Link>
+
+                          {/* 2. Edit */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              setEditingEmployee(emp);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors text-left cursor-pointer"
+                          >
+                            <Edit2 className="w-4 h-4 text-slate-400" />
+                            <span>{t('employees.menu.edit', 'Edit')}</span>
+                          </button>
+
+                          {/* 3. Activity History (ADMIN ONLY) */}
+                          {currentRole === 'ADMIN' && (
                             <button
-                              onClick={() => handleReactivateClick(emp)}
-                              className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg text-xs transition-colors inline-flex items-center gap-1 border border-emerald-200"
-                              title="Reactivate Member"
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                setSelectedActivityEmployee(emp);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition-colors text-left cursor-pointer"
                             >
-                              <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Activate</span>
+                              <History className="w-4 h-4 text-purple-500" />
+                              <span>{t('employees.menu.activity_history', 'Activity History')}</span>
+                            </button>
+                          )}
+
+                          <div className="my-1 border-t border-slate-100" />
+
+                          {/* 4. Deactivate / Activate */}
+                          {emp.status === 'Active' ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                handleDeactivateClick(emp);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors text-left cursor-pointer"
+                            >
+                              <UserX className="w-4 h-4 text-rose-500" />
+                              <span>{t('employees.menu.deactivate', 'Deactivate')}</span>
                             </button>
                           ) : (
                             <button
-                              onClick={() => handleDeactivateClick(emp)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                              title="Deactivate Member"
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                handleReactivateClick(emp);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 transition-colors text-left cursor-pointer"
                             >
-                              <UserX className="w-3.5 h-3.5" />
+                              <UserCheck className="w-4 h-4 text-emerald-500" />
+                              <span>{t('employees.menu.activate', 'Activate')}</span>
                             </button>
                           )}
-                        </>
+                        </div>
                       )}
                     </div>
                   </td>
@@ -345,11 +431,11 @@ export default function EmployeesPage() {
                   <td colSpan={6} className="py-12 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Users className="w-8 h-8 text-slate-300" />
-                      <span className="font-semibold text-slate-500">No team members found</span>
+                      <span className="font-semibold text-slate-500">{t('employees.empty.no_found', 'No team members found')}</span>
                       <span className="text-[11px] text-slate-400">
                         {statusFilter === 'INACTIVE'
-                          ? 'No deactivated members on record.'
-                          : 'Try adjusting your search query or status filter.'}
+                          ? t('employees.filter.status_inactive', 'No deactivated members on record.')
+                          : t('employees.empty.adjust_search', 'Try adjusting your search query or status filter.')}
                       </span>
                     </div>
                   </td>

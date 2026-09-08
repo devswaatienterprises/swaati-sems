@@ -11,7 +11,6 @@ import {
   User,
   Save,
   CheckCircle2,
-  History,
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -54,10 +53,10 @@ export default function SettingsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
             <SettingsIcon className="w-6 h-6 text-slate-700" />
-            <span>System & Profile Settings</span>
+            <span>{t('settings.title', 'System & Profile Settings')}</span>
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            Manage your user profile, configurable shift start times, and administrative activity logs.
+            {t('settings.subtitle', 'Manage your user profile, configurable shift start times, and administrative activity logs.')}
           </p>
         </div>
       </div>
@@ -72,31 +71,19 @@ export default function SettingsPage() {
             }`}
           >
             <User className="w-4 h-4" />
-            <span>My Profile</span>
+            <span>{t('settings.my_profile', 'My Profile')}</span>
           </button>
 
           {currentRole === 'ADMIN' && (
-            <>
-              <button
-                onClick={() => setActiveTab('timing')}
-                className={`w-full text-left px-3.5 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
-                  activeTab === 'timing' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <Clock className="w-4 h-4" />
-                <span>Office Shift Timing</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('audit')}
-                className={`w-full text-left px-3.5 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
-                  activeTab === 'audit' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <History className="w-4 h-4" />
-                <span>Audit / Activity History</span>
-              </button>
-            </>
+            <button
+              onClick={() => setActiveTab('timing')}
+              className={`w-full text-left px-3.5 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
+                activeTab === 'timing' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <Clock className="w-4 h-4" />
+              <span>{t('settings.office_timing', 'Office Shift Timing')}</span>
+            </button>
           )}
         </div>
 
@@ -106,12 +93,12 @@ export default function SettingsPage() {
           {activeTab === 'profile' && (
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4 text-xs">
               <h3 className="font-bold text-slate-800 text-sm pb-2 border-b border-slate-100">
-                Personal Profile Details
+                {t('settings.personal_details', 'Personal Profile Details')}
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Full Name</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('settings.full_name', 'Full Name')}</label>
                   <input
                     type="text"
                     disabled
@@ -121,7 +108,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Login User ID</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('settings.login_user_id', 'Login User ID')}</label>
                   <input
                     type="text"
                     disabled
@@ -131,7 +118,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Official Email</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('settings.official_email', 'Official Email')}</label>
                   <input
                     type="text"
                     disabled
@@ -141,7 +128,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Mobile Phone</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('settings.mobile_phone', 'Mobile Phone')}</label>
                   <input
                     type="text"
                     disabled
@@ -151,7 +138,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Department</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('settings.department', 'Department')}</label>
                   <input
                     type="text"
                     disabled
@@ -161,7 +148,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Designation</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('settings.designation', 'Designation')}</label>
                   <input
                     type="text"
                     disabled
@@ -178,16 +165,16 @@ export default function SettingsPage() {
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4 text-xs">
               <div className="pb-2 border-b border-slate-100">
                 <h3 className="font-bold text-slate-800 text-sm">
-                  Configurable Working Hours & Late Arrival Settings
+                  {t('settings.timing_title', 'Configurable Working Hours & Late Arrival Settings')}
                 </h3>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Team members checking in after the configured start time are automatically flagged as Late and their late minutes calculated.
+                  {t('settings.timing_subtitle', 'Team members checking in after the configured start time are automatically flagged as Late and their late minutes calculated.')}
                 </p>
               </div>
 
               <form onSubmit={handleSaveTiming} className="space-y-4 max-w-md">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Office Start Time *</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('settings.office_start_time', 'Office Start Time')} *</label>
                   <input
                     type="text"
                     required
@@ -200,7 +187,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Grace Period (Minutes)</label>
+                  <label className="block font-bold text-slate-700 mb-1">{t('settings.grace_period', 'Grace Period (Minutes)')}</label>
                   <input
                     type="number"
                     value={gracePeriod}
@@ -215,38 +202,9 @@ export default function SettingsPage() {
                   className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-sm shadow-blue-600/20 flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
-                  <span>Save Timing Configuration</span>
+                  <span>{t('settings.save_timing', 'Save Timing Configuration')}</span>
                 </button>
               </form>
-            </div>
-          )}
-
-          {/* TAB 3: AUDIT / ACTIVITY HISTORY (Admin Only) */}
-          {activeTab === 'audit' && currentRole === 'ADMIN' && (
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4 text-xs">
-              <div className="pb-2 border-b border-slate-100">
-                <h3 className="font-bold text-slate-800 text-sm">
-                  Administrative Action & Activity Audit Trail
-                </h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Immutable logs of critical admin actions such as member deactivations, permission adjustments, leave approvals, and datasheet replacements.
-                </p>
-              </div>
-
-              <div className="divide-y divide-slate-100">
-                {auditLogs.map((log) => (
-                  <div key={log.id} className="py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-slate-800">{log.action}</div>
-                      <div className="text-slate-500 text-[11px]">{log.target}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-slate-700">By: {log.performedBy}</div>
-                      <div className="text-[10px] text-slate-400">{log.time}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
         </div>

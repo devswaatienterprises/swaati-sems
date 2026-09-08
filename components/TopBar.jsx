@@ -6,15 +6,11 @@ import { useCrm } from '@/context/CrmContext';
 import {
   Menu,
   Bell,
-  Clock,
   Languages,
-  UserCheck,
 } from 'lucide-react';
 
 export default function TopBar({ onOpenSidebar }) {
   const {
-    checkedIn,
-    toggleCheckIn,
     notifications,
     locale,
     setLocale,
@@ -38,21 +34,8 @@ export default function TopBar({ onOpenSidebar }) {
         </button>
       </div>
 
-      {/* Right: Check-In Action, Notifications, Language */}
+      {/* Right: Language Selector, Notifications */}
       <div className="flex items-center gap-3">
-        {/* Daily Attendance Button */}
-        <button
-          onClick={toggleCheckIn}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold shadow-xs transition-all ${
-            checkedIn
-              ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
-              : 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-600/20'
-          }`}
-        >
-          {checkedIn ? <UserCheck className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-          <span>{checkedIn ? t('checked_in') + ' (09:45 AM)' : t('mark_check_in')}</span>
-        </button>
-
         {/* Language Selector */}
         <div className="relative">
           <button

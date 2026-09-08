@@ -23,6 +23,8 @@ import {
   Edit2,
   Eye,
   ArrowUpDown,
+  ArrowDown,
+  ArrowUp,
   FileText,
 } from 'lucide-react';
 
@@ -44,11 +46,35 @@ export default function LeadsPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sourceFilter, setSourceFilter] = useState('ALL');
   const [assigneeFilter, setAssigneeFilter] = useState('ALL');
-  const [sortBy, setSortBy] = useState('latest'); // 'latest' | 'followUp' | 'company' | 'status'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'desc' (newest first) | 'asc' (oldest first)
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
+
+  const formatCreatedDateTime = (timestamp) => {
+    if (!timestamp) return { date: '-', time: '' };
+    try {
+      const d = new Date(timestamp);
+      if (isNaN(d.getTime())) return { date: '-', time: '' };
+
+      const dateStr = d.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      }); // e.g., "08 Sep 2026"
+
+      const timeStr = d.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }); // e.g., "05:32 PM"
+
+      return { date: dateStr, time: timeStr };
+    } catch (e) {
+      return { date: '-', time: '' };
+    }
+  };
 
   const pipelineStages = [
     'New',
@@ -154,17 +180,12 @@ export default function LeadsPage() {
       return matchesSearch && matchesStatus && matchesSource && matchesAssignee;
     })
     .sort((a, b) => {
-      if (sortBy === 'followUp') {
-        return new Date(a.followUpDate || '2099-01-01') - new Date(b.followUpDate || '2099-01-01');
+      const timeA = new Date(a.createdAt || a.createdDate || 0).getTime();
+      const timeB = new Date(b.createdAt || b.createdDate || 0).getTime();
+      if (sortOrder === 'asc') {
+        return timeA - timeB; // Oldest first
       }
-      if (sortBy === 'company') {
-        return (a.companyName || a.leadName || '').localeCompare(b.companyName || b.leadName || '');
-      }
-      if (sortBy === 'status') {
-        return (a.status || '').localeCompare(b.status || '');
-      }
-      // default: latest lead
-      return (b.id || '').localeCompare(a.id || '');
+      return timeB - timeA; // Newest first (default)
     });
 
   const handleEditLead = (lead) => {
@@ -201,10 +222,10 @@ export default function LeadsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
             <TrendingUp className="w-6 h-6 text-purple-600" />
-            <span>Leads & Business Inquiries</span>
+            <span>{t('leads.title', 'Leads & Business Inquiries')}</span>
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            Track customer inquiries, material requirements, sales stages, and follow-up schedules.
+            {t('leads.subtitle', 'Track customer inquiries, material requirements, sales stages, and follow-up schedules.')}
           </p>
         </div>
 
@@ -220,7 +241,7 @@ export default function LeadsPage() {
               }`}
             >
               <TableIcon className="w-3.5 h-3.5" />
-              <span>Table View</span>
+              <span>{t('leads.table_view', 'Table View')}</span>
             </button>
             <button
               onClick={() => setViewMode('kanban')}
@@ -231,7 +252,7 @@ export default function LeadsPage() {
               }`}
             >
               <Kanban className="w-3.5 h-3.5" />
-              <span>Pipeline View</span>
+              <span>{t('leads.pipeline_view', 'Pipeline View')}</span>
             </button>
           </div>
 
@@ -243,7 +264,7 @@ export default function LeadsPage() {
             className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-xs shadow-sm shadow-purple-600/20 flex items-center gap-2 transition-all shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Lead</span>
+            <span>{t('leads.add_lead', 'Add Lead')}</span>
           </button>
         </div>
       </div>
@@ -257,7 +278,7 @@ export default function LeadsPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search company, client, Lead ID, product, mobile..."
+            placeholder={t('leads.search_placeholder', 'Search company, client, Lead ID, product, mobile...')}
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-purple-500 focus:outline-none"
           />
         </div>
@@ -266,16 +287,21 @@ export default function LeadsPage() {
         <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-start lg:justify-end text-xs">
           {/* Status Filter */}
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
-            <span className="text-slate-400 font-bold text-[11px]">Status:</span>
+            <span className="text-slate-400 font-bold text-[11px]">{t('leads.status', 'Status')}:</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
             >
-              <option value="ALL">All Statuses ({leads.length})</option>
+              <option value="ALL">{t('leads.all_statuses', 'All Statuses')} ({leads.length})</option>
               {pipelineStages.map((stg) => (
                 <option key={stg} value={stg}>
-                  {stg} ({leads.filter((l) => l.status === stg).length})
+                  {stg === 'New' ? t('leads.stage_new', 'New') :
+                   stg === 'Contacted' ? t('leads.stage_contacted', 'Contacted') :
+                   stg === 'Follow-up' ? t('leads.stage_follow_up', 'Follow-up') :
+                   stg === 'Quotation Sent' ? t('leads.stage_quotation_sent', 'Quotation Sent') :
+                   stg === 'Won' ? t('leads.stage_won', 'Won') :
+                   stg === 'Lost' ? t('leads.stage_lost', 'Lost') : stg} ({leads.filter((l) => l.status === stg).length})
                 </option>
               ))}
             </select>
@@ -283,31 +309,31 @@ export default function LeadsPage() {
 
           {/* Source Filter */}
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
-            <span className="text-slate-400 font-bold text-[11px]">Source:</span>
+            <span className="text-slate-400 font-bold text-[11px]">{t('leads.source', 'Source')}:</span>
             <select
               value={sourceFilter}
               onChange={(e) => setSourceFilter(e.target.value)}
               className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
             >
-              <option value="ALL">All Sources</option>
-              <option value="Website">Website</option>
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Call">Call</option>
-              <option value="Walk-in">Walk-in</option>
-              <option value="Referral">Referral</option>
-              <option value="Email">Email</option>
+              <option value="ALL">{t('leads.all_sources', 'All Sources')}</option>
+              <option value="Website">{t('leads.source_website', 'Website')}</option>
+              <option value="WhatsApp">{t('leads.source_whatsapp', 'WhatsApp')}</option>
+              <option value="Call">{t('leads.source_call', 'Call')}</option>
+              <option value="Walk-in">{t('leads.source_walk_in', 'Walk-in')}</option>
+              <option value="Referral">{t('leads.source_referral', 'Referral')}</option>
+              <option value="Email">{t('leads.source_email', 'Email')}</option>
             </select>
           </div>
 
           {/* Assigned To Filter */}
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
-            <span className="text-slate-400 font-bold text-[11px]">Assigned:</span>
+            <span className="text-slate-400 font-bold text-[11px]">{t('leads.assigned', 'Assigned')}:</span>
             <select
               value={assigneeFilter}
               onChange={(e) => setAssigneeFilter(e.target.value)}
               className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
             >
-              <option value="ALL">All Team</option>
+              <option value="ALL">{t('leads.all_team', 'All Team')}</option>
               {employees
                 .filter((e) => e.status === 'Active')
                 .map((emp) => (
@@ -315,21 +341,6 @@ export default function LeadsPage() {
                     {emp.name}
                   </option>
                 ))}
-            </select>
-          </div>
-
-          {/* Sort By */}
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
-            <ArrowUpDown className="w-3 h-3 text-slate-400" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
-            >
-              <option value="latest">Latest Lead</option>
-              <option value="followUp">Follow-up Date</option>
-              <option value="company">Client / Company</option>
-              <option value="status">Status</option>
             </select>
           </div>
         </div>
@@ -344,15 +355,33 @@ export default function LeadsPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider sticky top-0 z-10 text-[11px]">
                 <tr>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Lead ID</th>
-                  <th className="py-3.5 px-4 min-w-[180px]">Client / Company</th>
-                  <th className="py-3.5 px-4 min-w-[160px]">Contact Person</th>
-                  <th className="py-3.5 px-4 min-w-[200px]">Product / Requirement</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Source</th>
-                  <th className="py-3.5 px-4 min-w-[140px]">Assigned To</th>
-                  <th className="py-3.5 px-4 min-w-[130px]">Status</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Follow-up</th>
-                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Actions</th>
+                  <th
+                    onClick={() => setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
+                    className="py-3.5 px-4 whitespace-nowrap cursor-pointer select-none hover:bg-slate-100 transition-colors group"
+                    title={
+                      sortOrder === 'desc'
+                        ? 'Sorted Newest first. Click to sort Oldest first'
+                        : 'Sorted Oldest first. Click to sort Newest first'
+                    }
+                  >
+                    <div className="flex items-center gap-1.5 text-slate-700">
+                      <span>{t('leads.created', 'Created')}</span>
+                      {sortOrder === 'desc' ? (
+                        <ArrowDown className="w-3.5 h-3.5 text-purple-600" />
+                      ) : (
+                        <ArrowUp className="w-3.5 h-3.5 text-purple-600" />
+                      )}
+                    </div>
+                  </th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">{t('leads.lead_id', 'Lead ID')}</th>
+                  <th className="py-3.5 px-4 min-w-[180px]">{t('leads.client_company', 'Client / Company')}</th>
+                  <th className="py-3.5 px-4 min-w-[160px]">{t('leads.contact_person', 'Contact Person')}</th>
+                  <th className="py-3.5 px-4 min-w-[200px]">{t('leads.product_requirement', 'Product / Requirement')}</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">{t('leads.source', 'Source')}</th>
+                  <th className="py-3.5 px-4 min-w-[140px]">{t('leads.assigned_to', 'Assigned To')}</th>
+                  <th className="py-3.5 px-4 min-w-[130px]">{t('leads.status', 'Status')}</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">{t('leads.follow_up', 'Follow-up')}</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap">{t('leads.actions', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -363,8 +392,22 @@ export default function LeadsPage() {
                     l.status !== 'Won' &&
                     l.status !== 'Lost';
 
+                  const { date: createdDateStr, time: createdTimeStr } = formatCreatedDateTime(
+                    l.createdAt || l.createdDate
+                  );
+
                   return (
                     <tr key={l.id} className="hover:bg-slate-50/80 transition-colors">
+                      {/* Created Date & Time */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-900 text-[11px]">{createdDateStr}</span>
+                          {createdTimeStr && (
+                            <span className="text-[10px] text-slate-400 font-medium">{createdTimeStr}</span>
+                          )}
+                        </div>
+                      </td>
+
                       {/* Lead ID */}
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-500 text-[11px] whitespace-nowrap">
                         <span className="px-2 py-0.5 bg-slate-100 rounded border border-slate-200/80">
@@ -421,7 +464,7 @@ export default function LeadsPage() {
                             {(l.assignedTo || 'SE').slice(0, 2).toUpperCase()}
                           </div>
                           <span className="font-bold text-slate-800 truncate max-w-[120px]">
-                            {l.assignedTo || 'Unassigned'}
+                            {l.assignedTo || t('common.unassigned', 'Unassigned')}
                           </span>
                         </div>
                       </td>
@@ -437,7 +480,12 @@ export default function LeadsPage() {
                         >
                           {pipelineStages.map((stg) => (
                             <option key={stg} value={stg}>
-                              {stg}
+                              {stg === 'New' ? t('leads.stage_new', 'New') :
+                               stg === 'Contacted' ? t('leads.stage_contacted', 'Contacted') :
+                               stg === 'Follow-up' ? t('leads.stage_follow_up', 'Follow-up') :
+                               stg === 'Quotation Sent' ? t('leads.stage_quotation_sent', 'Quotation Sent') :
+                               stg === 'Won' ? t('leads.stage_won', 'Won') :
+                               stg === 'Lost' ? t('leads.stage_lost', 'Lost') : stg}
                             </option>
                           ))}
                         </select>
@@ -455,7 +503,7 @@ export default function LeadsPage() {
                             <span>{l.followUpDate}</span>
                             {isFollowUpOverdue && (
                               <span className="text-[9px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded font-bold">
-                                Overdue
+                                {t('leads.overdue', 'Overdue')}
                               </span>
                             )}
                           </div>
@@ -469,10 +517,10 @@ export default function LeadsPage() {
                         <button
                           onClick={() => handleEditLead(l)}
                           className="px-3 py-1.5 bg-slate-100 hover:bg-purple-50 hover:text-purple-700 text-slate-700 font-bold rounded-lg text-xs transition-colors inline-flex items-center gap-1.5"
-                          title="Edit Lead Details"
+                          title={t('leads.edit_lead', 'Edit Lead Details')}
                         >
                           <Edit2 className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Edit</span>
+                          <span>{t('common.edit', 'Edit')}</span>
                         </button>
                       </td>
                     </tr>
@@ -481,12 +529,12 @@ export default function LeadsPage() {
 
                 {filteredLeads.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-slate-400">
+                    <td colSpan={10} className="py-12 text-center text-slate-400">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <TrendingUp className="w-8 h-8 text-slate-300" />
-                        <span className="font-semibold text-slate-500">No matching leads found</span>
+                        <span className="font-semibold text-slate-500">{t('leads.no_leads_found', 'No matching leads found')}</span>
                         <span className="text-[11px] text-slate-400">
-                          Try adjusting your search criteria or add a new lead inquiry.
+                          {t('leads.no_leads_hint', 'Try adjusting your search criteria or add a new lead inquiry.')}
                         </span>
                       </div>
                     </td>
@@ -509,7 +557,12 @@ export default function LeadsPage() {
                 {/* Column Header */}
                 <div className="flex items-center justify-between mb-3 px-1">
                   <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
-                    {stage}
+                    {stage === 'New' ? t('leads.stage_new', 'New') :
+                     stage === 'Contacted' ? t('leads.stage_contacted', 'Contacted') :
+                     stage === 'Follow-up' ? t('leads.stage_follow_up', 'Follow-up') :
+                     stage === 'Quotation Sent' ? t('leads.stage_quotation_sent', 'Quotation Sent') :
+                     stage === 'Won' ? t('leads.stage_won', 'Won') :
+                     stage === 'Lost' ? t('leads.stage_lost', 'Lost') : stage}
                   </span>
                   <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700">
                     {stageLeads.length}
@@ -559,12 +612,12 @@ export default function LeadsPage() {
                       {/* Attribution Info */}
                       <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-500 space-y-0.5">
                         <div>
-                          Assignee: <strong className="text-blue-700">{l.assignedTo}</strong>
+                          {t('leads.assigned', 'Assignee')}: <strong className="text-blue-700">{l.assignedTo}</strong>
                         </div>
                         {l.followUpDate && (
                           <div className="flex items-center gap-1 text-slate-600">
                             <Calendar className="w-3 h-3 text-slate-400" />
-                            <span>Follow-up: <strong>{l.followUpDate}</strong></span>
+                            <span>{t('leads.follow_up', 'Follow-up')}: <strong>{l.followUpDate}</strong></span>
                           </div>
                         )}
                       </div>
@@ -578,7 +631,12 @@ export default function LeadsPage() {
                         >
                           {pipelineStages.map((stg) => (
                             <option key={stg} value={stg}>
-                              Stage: {stg}
+                              {stg === 'New' ? t('leads.stage_new', 'New') :
+                               stg === 'Contacted' ? t('leads.stage_contacted', 'Contacted') :
+                               stg === 'Follow-up' ? t('leads.stage_follow_up', 'Follow-up') :
+                               stg === 'Quotation Sent' ? t('leads.stage_quotation_sent', 'Quotation Sent') :
+                               stg === 'Won' ? t('leads.stage_won', 'Won') :
+                               stg === 'Lost' ? t('leads.stage_lost', 'Lost') : stg}
                             </option>
                           ))}
                         </select>
@@ -586,7 +644,7 @@ export default function LeadsPage() {
                         <button
                           onClick={() => handleEditLead(l)}
                           className="p-1 text-slate-400 hover:text-purple-600 hover:bg-slate-100 rounded"
-                          title="Edit Lead"
+                          title={t('leads.edit_lead', 'Edit Lead')}
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
@@ -595,7 +653,7 @@ export default function LeadsPage() {
                   ))}
 
                   {stageLeads.length === 0 && (
-                    <div className="p-6 text-center text-slate-400 text-[10px]">No leads</div>
+                    <div className="p-6 text-center text-slate-400 text-[10px]">{t('leads.no_leads', 'No leads')}</div>
                   )}
                 </div>
               </div>

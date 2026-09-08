@@ -246,10 +246,10 @@ export default function MessagesPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
             <MessageSquare className="w-6 h-6 text-blue-600" />
-            <span>Internal Team Communication</span>
+            <span>{t('messages.title', 'Internal Team Communication')}</span>
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            Direct 1-on-1 and group messaging across engineering, site operations, and management.
+            {t('messages.subtitle', 'Direct 1-on-1 and group messaging across engineering, site operations, and management.')}
           </p>
         </div>
 
@@ -264,7 +264,7 @@ export default function MessagesPage() {
             className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-sm shadow-blue-600/20 flex items-center gap-1.5 transition-all"
           >
             <Plus className="w-4 h-4" />
-            <span>New Message</span>
+            <span>{t('messages.new_message', 'New Message')}</span>
           </button>
 
           <button
@@ -277,7 +277,7 @@ export default function MessagesPage() {
             className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all"
           >
             <Users className="w-4 h-4 text-slate-500" />
-            <span>Create Group</span>
+            <span>{t('messages.create_group', 'Create Group')}</span>
           </button>
         </div>
       </div>
@@ -296,7 +296,7 @@ export default function MessagesPage() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search team members or groups..."
+                placeholder={t('messages.search_placeholder', 'Search team members or groups...')}
                 className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -309,7 +309,7 @@ export default function MessagesPage() {
                   tabFilter === 'all' ? 'bg-white text-slate-900 shadow-2xs font-extrabold' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                All
+                {t('messages.tab_all', 'All')}
               </button>
               <button
                 onClick={() => setTabFilter('direct')}
@@ -317,7 +317,7 @@ export default function MessagesPage() {
                   tabFilter === 'direct' ? 'bg-white text-slate-900 shadow-2xs font-extrabold' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                Direct ({directConversations.length})
+                {t('messages.tab_direct', 'Direct')} ({directConversations.length})
               </button>
               <button
                 onClick={() => setTabFilter('groups')}
@@ -325,7 +325,7 @@ export default function MessagesPage() {
                   tabFilter === 'groups' ? 'bg-white text-slate-900 shadow-2xs font-extrabold' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                Groups ({groupConversations.length})
+                {t('messages.tab_groups', 'Groups')} ({groupConversations.length})
               </button>
             </div>
           </div>
@@ -334,7 +334,7 @@ export default function MessagesPage() {
           <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
             {allConversations.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-xs">
-                No conversations found.
+                {t('messages.no_conversations', 'No conversations found.')}
               </div>
             ) : (
               allConversations.map((item) => {
@@ -390,7 +390,7 @@ export default function MessagesPage() {
 
                       {item.type === 'group' && (
                         <span className="inline-block mt-1 px-1.5 py-0.2 bg-indigo-50 text-indigo-700 rounded text-[9px] font-bold">
-                          Group • {item.memberCount} members
+                          {t('messages.group_badge', 'Group')} • {item.memberCount} {t('messages.members', 'members')}
                         </span>
                       )}
                     </div>
@@ -451,8 +451,8 @@ export default function MessagesPage() {
                 {currentMessages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs space-y-2">
                     <MessageSquare className="w-8 h-8 text-slate-300" />
-                    <div className="font-bold text-slate-600">No messages in this conversation yet.</div>
-                    <p className="text-slate-400">Say hello to start the discussion!</p>
+                    <div className="font-bold text-slate-600">{t('messages.no_messages_yet', 'No messages in this conversation yet.')}</div>
+                    <p className="text-slate-400">{t('messages.say_hello', 'Say hello to start the discussion!')}</p>
                   </div>
                 ) : (
                   currentMessages.map((m) => {
@@ -507,7 +507,7 @@ export default function MessagesPage() {
                               }`}
                             >
                               <Paperclip className="w-3 h-3 shrink-0" />
-                              <span className="truncate max-w-[160px]">View Attachment</span>
+                              <span className="truncate max-w-[160px]">{t('messages.view_attachment', 'View Attachment')}</span>
                               <Download className="w-3 h-3 ml-1 opacity-70 shrink-0" />
                             </button>
                           )}
@@ -567,7 +567,7 @@ export default function MessagesPage() {
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className="p-2.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition-colors shrink-0 cursor-pointer"
-                    title="Attach File (PDF, Image)"
+                    title={t('messages.attach_file', 'Attach File (PDF, Image)')}
                   >
                     <Paperclip className="w-4 h-4" />
                   </button>
@@ -577,8 +577,8 @@ export default function MessagesPage() {
                     onChange={(e) => setMessageText(e.target.value)}
                     placeholder={
                       selectedChat.type === 'group'
-                        ? `Message ${activeGroup?.name || 'group'}...`
-                        : `Message ${activeRecipient?.name || 'team member'}...`
+                        ? `${t('messages.send', 'Message')} ${activeGroup?.name || 'group'}...`
+                        : `${t('messages.send', 'Message')} ${activeRecipient?.name || 'team member'}...`
                     }
                     className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
                   />
@@ -588,7 +588,7 @@ export default function MessagesPage() {
                     className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-xs flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
-                    <span>Send</span>
+                    <span>{t('messages.send', 'Send')}</span>
                   </button>
                 </div>
               </form>
@@ -600,10 +600,10 @@ export default function MessagesPage() {
                 <MessageSquare className="w-8 h-8" />
               </div>
               <h3 className="text-base font-bold text-slate-800 mb-1">
-                Select a Team Member or Group
+                {t('messages.select_chat_prompt', 'Select a Team Member or Group')}
               </h3>
               <p className="text-xs text-slate-500 max-w-sm mb-5">
-                Choose a conversation from the left to start messaging, or click "New Message" above to initiate a new thread.
+                {t('messages.select_chat_hint', 'Choose a conversation from the left to start messaging, or click "New Message" above to initiate a new thread.')}
               </p>
               <button
                 onClick={() => {
@@ -614,7 +614,7 @@ export default function MessagesPage() {
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Start New Conversation</span>
+                <span>{t('messages.start_new_conv', 'Start New Conversation')}</span>
               </button>
             </div>
           )}
@@ -633,9 +633,9 @@ export default function MessagesPage() {
                   <MessageSquare className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-800 text-sm">Send New Message</h3>
+                  <h3 className="font-bold text-slate-800 text-sm">{t('messages.modal_new_msg_title', 'Send New Message')}</h3>
                   <p className="text-[11px] text-slate-500 font-medium">
-                    Initiate an internal chat with any team member.
+                    {t('messages.modal_new_msg_subtitle', 'Initiate an internal chat with any team member.')}
                   </p>
                 </div>
               </div>
@@ -649,7 +649,7 @@ export default function MessagesPage() {
 
             <form onSubmit={handleCreateNewMessage} className="p-6 space-y-4 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1.5">Select Team Member *</label>
+                <label className="block font-bold text-slate-700 mb-1.5">{t('messages.select_team_member', 'Select Team Member')} *</label>
                 <select
                   value={newMsgRecipientId}
                   onChange={(e) => setNewMsgRecipientId(e.target.value)}
@@ -665,13 +665,13 @@ export default function MessagesPage() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1.5">Message Content *</label>
+                <label className="block font-bold text-slate-700 mb-1.5">{t('messages.message_content', 'Message Content')} *</label>
                 <textarea
                   rows={4}
                   required
                   value={newMsgContent}
                   onChange={(e) => setNewMsgContent(e.target.value)}
-                  placeholder="Type your message details here..."
+                  placeholder={t('messages.type_message_placeholder', 'Type your message details here...')}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400 leading-relaxed"
                 />
               </div>
@@ -682,14 +682,14 @@ export default function MessagesPage() {
                   onClick={() => setIsNewMessageModalOpen(false)}
                   className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
                 >
-                  Cancel
+                  {t('common.cancel', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>Send Message</span>
+                  <span>{t('messages.send_message', 'Send Message')}</span>
                 </button>
               </div>
             </form>
@@ -709,9 +709,9 @@ export default function MessagesPage() {
                   <Users className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-800 text-sm">Create Team Group</h3>
+                  <h3 className="font-bold text-slate-800 text-sm">{t('messages.modal_group_title', 'Create Team Group')}</h3>
                   <p className="text-[11px] text-slate-500 font-medium">
-                    Create a shared workspace channel for project teams or departments.
+                    {t('messages.modal_group_subtitle', 'Create a shared workspace channel for project teams or departments.')}
                   </p>
                 </div>
               </div>
@@ -725,7 +725,7 @@ export default function MessagesPage() {
 
             <form onSubmit={handleCreateNewGroup} className="p-6 space-y-4 text-xs flex-1 overflow-y-auto">
               <div>
-                <label className="block font-bold text-slate-700 mb-1.5">Group Name *</label>
+                <label className="block font-bold text-slate-700 mb-1.5">{t('messages.group_name', 'Group Name')} *</label>
                 <input
                   type="text"
                   required
@@ -737,7 +737,7 @@ export default function MessagesPage() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1.5">Purpose / Description</label>
+                <label className="block font-bold text-slate-700 mb-1.5">{t('messages.purpose_desc', 'Purpose / Description')}</label>
                 <input
                   type="text"
                   value={groupDescription}
@@ -750,7 +750,7 @@ export default function MessagesPage() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block font-bold text-slate-700">
-                    Select Team Members * ({selectedMemberIds.length} selected)
+                    {t('messages.select_members', 'Select Team Members')} * ({selectedMemberIds.length} {t('messages.selected', 'selected')})
                   </label>
                   <button
                     type="button"
@@ -763,7 +763,7 @@ export default function MessagesPage() {
                     }}
                     className="text-[11px] text-indigo-600 font-bold hover:underline"
                   >
-                    {selectedMemberIds.length === otherActiveEmployees.length ? 'Deselect All' : 'Select All'}
+                    {selectedMemberIds.length === otherActiveEmployees.length ? t('messages.deselect_all', 'Deselect All') : t('messages.select_all', 'Select All')}
                   </button>
                 </div>
 
@@ -807,7 +807,7 @@ export default function MessagesPage() {
                   onClick={() => setIsCreateGroupModalOpen(false)}
                   className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
                 >
-                  Cancel
+                  {t('common.cancel', 'Cancel')}
                 </button>
                 <button
                   type="submit"
@@ -815,7 +815,7 @@ export default function MessagesPage() {
                   className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5"
                 >
                   <Users className="w-3.5 h-3.5" />
-                  <span>Create Group</span>
+                  <span>{t('messages.create_group', 'Create Group')}</span>
                 </button>
               </div>
             </form>

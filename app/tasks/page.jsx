@@ -183,7 +183,7 @@ export default function TasksPage() {
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div>
-                <h3 className="font-bold text-slate-800 text-sm">Task Notes & Updates</h3>
+                <h3 className="font-bold text-slate-800 text-sm">{t('tasks.notes_updates', 'Task Notes & Updates')}</h3>
                 <p className="text-[11px] text-slate-500 font-medium truncate max-w-[280px]">
                   {selectedTaskComments.title}
                 </p>
@@ -199,13 +199,13 @@ export default function TasksPage() {
             <div className="p-6 space-y-4 text-xs">
               <div className="space-y-2 max-h-56 overflow-y-auto">
                 {!selectedTaskComments.comments || selectedTaskComments.comments.length === 0 ? (
-                  <div className="p-6 text-center text-slate-400">No notes posted yet.</div>
+                  <div className="p-6 text-center text-slate-400">{t('tasks.no_notes', 'No notes posted yet.')}</div>
                 ) : (
                   selectedTaskComments.comments.map((c, i) => (
                     <div key={c.id || i} className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-bold text-slate-900">{c.author}</span>
-                        <span className="text-[10px] text-slate-400">{c.time || 'Recent'}</span>
+                        <span className="text-[10px] text-slate-400">{c.time || t('common.recent', 'Recent')}</span>
                       </div>
                       <p className="text-slate-700 leading-relaxed">{c.text}</p>
                     </div>
@@ -219,7 +219,7 @@ export default function TasksPage() {
                   required
                   value={commentInput}
                   onChange={(e) => setCommentInput(e.target.value)}
-                  placeholder="Post progress update or site remark..."
+                  placeholder={t('tasks.post_update_placeholder', 'Post progress update or site remark...')}
                   className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
                 <button
@@ -227,7 +227,7 @@ export default function TasksPage() {
                   className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl shadow-sm flex items-center gap-1"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>Send</span>
+                  <span>{t('common.send', 'Send')}</span>
                 </button>
               </form>
             </div>
@@ -240,10 +240,10 @@ export default function TasksPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
             <CheckSquare className="w-6 h-6 text-amber-600" />
-            <span>Team Tasks & Work Orders</span>
+            <span>{t('tasks.title', 'Team Tasks & Work Orders')}</span>
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            Assign operational jobs, monitor completion status, due dates, and execution notes.
+            {t('tasks.subtitle', 'Assign operational jobs, monitor completion status, due dates, and execution notes.')}
           </p>
         </div>
 
@@ -259,7 +259,7 @@ export default function TasksPage() {
               }`}
             >
               <TableIcon className="w-3.5 h-3.5" />
-              <span>Table View</span>
+              <span>{t('tasks.table_view', 'Table View')}</span>
             </button>
             <button
               onClick={() => setViewMode('kanban')}
@@ -270,7 +270,7 @@ export default function TasksPage() {
               }`}
             >
               <Kanban className="w-3.5 h-3.5" />
-              <span>Kanban View</span>
+              <span>{t('tasks.kanban_view', 'Kanban View')}</span>
             </button>
           </div>
 
@@ -283,7 +283,7 @@ export default function TasksPage() {
               className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-xs shadow-sm shadow-amber-600/20 flex items-center gap-2 transition-all shrink-0 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Create Task</span>
+              <span>{t('tasks.create_task', 'Create Task')}</span>
             </button>
           )}
         </div>
@@ -298,7 +298,7 @@ export default function TasksPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search task title, Task ID, assignee, description..."
+            placeholder={t('tasks.search_placeholder', 'Search task title, Task ID, assignee, description...')}
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
           />
         </div>
@@ -307,16 +307,19 @@ export default function TasksPage() {
         <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-start lg:justify-end text-xs">
           {/* Status Filter */}
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
-            <span className="text-slate-400 font-bold text-[11px]">Status:</span>
+            <span className="text-slate-400 font-bold text-[11px]">{t('tasks.status', 'Status')}:</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
             >
-              <option value="ALL">All Statuses ({tasks.length})</option>
+              <option value="ALL">{t('tasks.all_statuses', 'All Statuses')} ({tasks.length})</option>
               {kanbanColumns.map((stg) => (
                 <option key={stg} value={stg}>
-                  {stg} ({tasks.filter((t) => t.status === stg).length})
+                  {stg === 'To Do' ? t('tasks.status_todo', 'To Do') :
+                   stg === 'In Progress' ? t('tasks.status_in_progress', 'In Progress') :
+                   stg === 'Completed' ? t('tasks.status_completed', 'Completed') :
+                   stg === 'Overdue' ? t('tasks.status_overdue', 'Overdue') : stg} ({tasks.filter((t) => t.status === stg).length})
                 </option>
               ))}
             </select>
@@ -324,29 +327,29 @@ export default function TasksPage() {
 
           {/* Priority Filter */}
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
-            <span className="text-slate-400 font-bold text-[11px]">Priority:</span>
+            <span className="text-slate-400 font-bold text-[11px]">{t('tasks.priority', 'Priority')}:</span>
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
               className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
             >
-              <option value="ALL">All Priorities</option>
-              <option value="Urgent">Urgent</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
+              <option value="ALL">{t('tasks.all_priorities', 'All Priorities')}</option>
+              <option value="Urgent">{t('tasks.priority_urgent', 'Urgent')}</option>
+              <option value="High">{t('tasks.priority_high', 'High')}</option>
+              <option value="Medium">{t('tasks.priority_medium', 'Medium')}</option>
+              <option value="Low">{t('tasks.priority_low', 'Low')}</option>
             </select>
           </div>
 
           {/* Assigned To Filter */}
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
-            <span className="text-slate-400 font-bold text-[11px]">Assignee:</span>
+            <span className="text-slate-400 font-bold text-[11px]">{t('tasks.assignee', 'Assignee')}:</span>
             <select
               value={assigneeFilter}
               onChange={(e) => setAssigneeFilter(e.target.value)}
               className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
             >
-              <option value="ALL">All Team</option>
+              <option value="ALL">{t('tasks.all_team', 'All Team')}</option>
               {employees
                 .filter((e) => e.status === 'Active')
                 .map((emp) => (
@@ -365,10 +368,10 @@ export default function TasksPage() {
               onChange={(e) => setSortBy(e.target.value)}
               className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
             >
-              <option value="deadline">Due Date</option>
-              <option value="priority">Priority</option>
-              <option value="status">Status</option>
-              <option value="title">Task Title</option>
+              <option value="deadline">{t('tasks.due_date', 'Due Date')}</option>
+              <option value="priority">{t('tasks.priority', 'Priority')}</option>
+              <option value="status">{t('tasks.status', 'Status')}</option>
+              <option value="title">{t('tasks.task_title', 'Task Title')}</option>
             </select>
           </div>
         </div>
@@ -381,44 +384,44 @@ export default function TasksPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider sticky top-0 z-10 text-[11px]">
                 <tr>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Task ID</th>
-                  <th className="py-3.5 px-4 max-w-[220px]">Task</th>
-                  <th className="py-3.5 px-4 min-w-[125px]">Status</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Priority</th>
-                  <th className="py-3.5 px-4 min-w-[140px]">Assigned To</th>
-                  <th className="py-3.5 px-4 min-w-[130px]">Assigned By</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Due Date</th>
-                  <th className="py-3.5 px-4 text-center whitespace-nowrap">Comments</th>
-                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Edit</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">{t('tasks.task_id', 'Task ID')}</th>
+                  <th className="py-3.5 px-4 max-w-[220px]">{t('tasks.task_title', 'Task')}</th>
+                  <th className="py-3.5 px-4 min-w-[125px]">{t('tasks.status', 'Status')}</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">{t('tasks.priority', 'Priority')}</th>
+                  <th className="py-3.5 px-4 min-w-[140px]">{t('tasks.assigned_to', 'Assigned To')}</th>
+                  <th className="py-3.5 px-4 min-w-[130px]">{t('tasks.assigned_by', 'Assigned By')}</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">{t('tasks.due_date', 'Due Date')}</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap">{t('tasks.comments', 'Comments')}</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap">{t('common.edit', 'Edit')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {filteredTasks.map((t) => {
+                {filteredTasks.map((tItem) => {
                   const isOverdue =
-                    t.deadline &&
-                    new Date(t.deadline) < new Date(new Date().setHours(0, 0, 0, 0)) &&
-                    t.status !== 'Completed';
+                    tItem.deadline &&
+                    new Date(tItem.deadline) < new Date(new Date().setHours(0, 0, 0, 0)) &&
+                    tItem.status !== 'Completed';
 
                   return (
-                    <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
+                    <tr key={tItem.id} className="hover:bg-slate-50/80 transition-colors">
                       {/* 1. Task ID */}
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-500 text-[11px] whitespace-nowrap">
                         <span className="px-2 py-0.5 bg-slate-100 rounded border border-slate-200/80">
-                          {t.taskCode || t.id}
+                          {tItem.taskCode || tItem.id}
                         </span>
                       </td>
 
                       {/* 2. Task */}
                       <td className="py-3.5 px-4 max-w-[220px]">
-                        <div className="font-bold text-slate-900 leading-snug truncate" title={t.title}>
-                          {t.title}
+                        <div className="font-bold text-slate-900 leading-snug truncate" title={tItem.title}>
+                          {tItem.title}
                         </div>
-                        {t.description && (
+                        {tItem.description && (
                           <div
                             className="text-[11px] text-slate-500 truncate mt-0.5"
-                            title={t.description}
+                            title={tItem.description}
                           >
-                            {t.description}
+                            {tItem.description}
                           </div>
                         )}
                       </td>
@@ -426,15 +429,18 @@ export default function TasksPage() {
                       {/* 3. Status */}
                       <td className="py-3.5 px-4">
                         <select
-                          value={t.status}
-                          onChange={(e) => updateTaskStatus(t.id, e.target.value)}
+                          value={tItem.status}
+                          onChange={(e) => updateTaskStatus(tItem.id, e.target.value)}
                           className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border focus:outline-none cursor-pointer transition-all ${getStatusBadgeClass(
-                            t.status
+                            tItem.status
                           )}`}
                         >
                           {kanbanColumns.map((stg) => (
                             <option key={stg} value={stg}>
-                              {stg}
+                              {stg === 'To Do' ? t('tasks.status_todo', 'To Do') :
+                               stg === 'In Progress' ? t('tasks.status_in_progress', 'In Progress') :
+                               stg === 'Completed' ? t('tasks.status_completed', 'Completed') :
+                               stg === 'Overdue' ? t('tasks.status_overdue', 'Overdue') : stg}
                             </option>
                           ))}
                         </select>
@@ -442,8 +448,11 @@ export default function TasksPage() {
 
                       {/* 4. Priority */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className={`px-2.5 py-0.5 rounded-md text-[10px] ${getPriorityBadgeClass(t.priority)}`}>
-                          {t.priority}
+                        <span className={`px-2.5 py-0.5 rounded-md text-[10px] ${getPriorityBadgeClass(tItem.priority)}`}>
+                          {tItem.priority === 'Urgent' ? t('tasks.priority_urgent', 'Urgent') :
+                           tItem.priority === 'High' ? t('tasks.priority_high', 'High') :
+                           tItem.priority === 'Medium' ? t('tasks.priority_medium', 'Medium') :
+                           tItem.priority === 'Low' ? t('tasks.priority_low', 'Low') : tItem.priority}
                         </span>
                       </td>
 
@@ -451,33 +460,33 @@ export default function TasksPage() {
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-1.5">
                           <div className="w-5 h-5 rounded-full bg-slate-800 text-white text-[9px] font-bold flex items-center justify-center shrink-0">
-                            {(t.assignedTo || 'TM').slice(0, 2).toUpperCase()}
+                            {(tItem.assignedTo || 'TM').slice(0, 2).toUpperCase()}
                           </div>
-                          <span className="font-bold text-slate-800 truncate max-w-[120px]" title={t.assignedTo}>
-                            {t.assignedTo}
+                          <span className="font-bold text-slate-800 truncate max-w-[120px]" title={tItem.assignedTo}>
+                            {tItem.assignedTo}
                           </span>
                         </div>
                       </td>
 
                       {/* 6. Assigned By */}
                       <td className="py-3.5 px-4 text-slate-600 font-medium whitespace-nowrap">
-                        {t.assignedBy}
+                        {tItem.assignedBy}
                       </td>
 
                       {/* 7. Due Date */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <div
                           className={`flex items-center gap-1 text-[11px] font-semibold ${
-                            isOverdue || t.status === 'Overdue'
+                            isOverdue || tItem.status === 'Overdue'
                               ? 'text-rose-600 font-bold'
                               : 'text-slate-600'
                           }`}
                         >
                           <Clock className="w-3 h-3 text-slate-400 shrink-0" />
-                          <span>{t.deadline}</span>
-                          {(isOverdue || t.status === 'Overdue') && (
+                          <span>{tItem.deadline}</span>
+                          {(isOverdue || tItem.status === 'Overdue') && (
                             <span className="text-[9px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded font-bold">
-                              Overdue
+                              {t('tasks.status_overdue', 'Overdue')}
                             </span>
                           )}
                         </div>
@@ -486,24 +495,24 @@ export default function TasksPage() {
                       {/* 8. Comments */}
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
                         <button
-                          onClick={() => setSelectedTaskComments(t)}
+                          onClick={() => setSelectedTaskComments(tItem)}
                           className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1"
-                          title="View / Add Comments"
+                          title={t('tasks.notes_updates', 'View / Add Comments')}
                         >
                           <MessageSquare className="w-3 h-3 text-slate-500" />
-                          <span>{t.comments?.length || 0}</span>
+                          <span>{tItem.comments?.length || 0}</span>
                         </button>
                       </td>
 
                       {/* 9. Edit */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <button
-                          onClick={() => setEditingTask(t)}
+                          onClick={() => setEditingTask(tItem)}
                           className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-xs inline-flex items-center gap-1.5 transition-colors"
-                          title="Edit Task Details"
+                          title={t('tasks.edit_task', 'Edit Task Details')}
                         >
                           <Edit3 className="w-3.5 h-3.5" />
-                          <span>Edit</span>
+                          <span>{t('common.edit', 'Edit')}</span>
                         </button>
                       </td>
                     </tr>
@@ -515,9 +524,9 @@ export default function TasksPage() {
                     <td colSpan={9} className="py-12 text-center text-slate-400">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <CheckSquare className="w-8 h-8 text-slate-300" />
-                        <span className="font-semibold text-slate-500">No matching tasks found</span>
+                        <span className="font-semibold text-slate-500">{t('tasks.no_tasks_found', 'No matching tasks found')}</span>
                         <span className="text-[11px] text-slate-400">
-                          Try adjusting your search query or filters.
+                          {t('tasks.no_tasks_filter_hint', 'Try adjusting your search query or filters.')}
                         </span>
                       </div>
                     </td>
@@ -533,7 +542,7 @@ export default function TasksPage() {
         /* ========================================================== */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {kanbanColumns.map((col) => {
-            const colTasks = filteredTasks.filter((t) => t.status === col);
+            const colTasks = filteredTasks.filter((tItem) => tItem.status === col);
 
             return (
               <div key={col} className="bg-slate-100/70 rounded-2xl p-4 flex flex-col min-h-[500px]">
@@ -551,7 +560,10 @@ export default function TasksPage() {
                           : 'bg-rose-500'
                       }`}
                     ></span>
-                    {col}
+                    {col === 'To Do' ? t('tasks.status_todo', 'To Do') :
+                     col === 'In Progress' ? t('tasks.status_in_progress', 'In Progress') :
+                     col === 'Completed' ? t('tasks.status_completed', 'Completed') :
+                     col === 'Overdue' ? t('tasks.status_overdue', 'Overdue') : col}
                   </span>
                   <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700">
                     {colTasks.length}
@@ -560,73 +572,76 @@ export default function TasksPage() {
 
                 {/* Cards Container */}
                 <div className="flex-1 space-y-3 overflow-y-auto">
-                  {colTasks.map((t) => (
+                  {colTasks.map((tItem) => (
                     <div
-                      key={t.id}
+                      key={tItem.id}
                       className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-xs hover:shadow-md transition-shadow text-xs space-y-2.5"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <span className="font-mono text-[10px] text-slate-400 font-bold">
-                          {t.taskCode || t.id}
+                          {tItem.taskCode || tItem.id}
                         </span>
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${getPriorityBadgeClass(t.priority)}`}>
-                          {t.priority}
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${getPriorityBadgeClass(tItem.priority)}`}>
+                          {tItem.priority === 'Urgent' ? t('tasks.priority_urgent', 'Urgent') :
+                           tItem.priority === 'High' ? t('tasks.priority_high', 'High') :
+                           tItem.priority === 'Medium' ? t('tasks.priority_medium', 'Medium') :
+                           tItem.priority === 'Low' ? t('tasks.priority_low', 'Low') : tItem.priority}
                         </span>
                       </div>
 
-                      <h4 className="font-bold text-slate-900 text-xs leading-snug">{t.title}</h4>
+                      <h4 className="font-bold text-slate-900 text-xs leading-snug">{tItem.title}</h4>
 
-                      {t.description && (
-                        <p className="text-slate-500 text-[11px] line-clamp-2">{t.description}</p>
+                      {tItem.description && (
+                        <p className="text-slate-500 text-[11px] line-clamp-2">{tItem.description}</p>
                       )}
 
                       {/* Explicit Assigned To & Assigned By Details */}
                       <div className="pt-2 border-t border-slate-100 space-y-1 text-[11px]">
                         <div className="flex items-center justify-between">
-                          <span className="text-slate-400 font-medium">Assigned To:</span>
+                          <span className="text-slate-400 font-medium">{t('tasks.assigned_to', 'Assigned To')}:</span>
                           <span className="font-bold text-slate-800 flex items-center gap-1">
                             <User className="w-3 h-3 text-blue-600" />
-                            {t.assignedTo}
+                            {tItem.assignedTo}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-slate-400 font-medium">Assigned By:</span>
-                          <span className="font-semibold text-slate-600">{t.assignedBy}</span>
+                          <span className="text-slate-400 font-medium">{t('tasks.assigned_by', 'Assigned By')}:</span>
+                          <span className="font-semibold text-slate-600">{tItem.assignedBy}</span>
                         </div>
                       </div>
 
                       <div className="pt-1.5 flex items-center justify-between text-[10px] text-slate-400">
                         <span className="flex items-center gap-1 font-medium text-slate-500">
                           <Clock className="w-3 h-3 text-slate-400" />
-                          Due: {t.deadline}
+                          {t('tasks.due_prefix', 'Due')}: {tItem.deadline}
                         </span>
 
                         <button
-                          onClick={() => setSelectedTaskComments(t)}
+                          onClick={() => setSelectedTaskComments(tItem)}
                           className="flex items-center gap-1 text-slate-500 hover:text-amber-600 font-bold"
                         >
                           <MessageSquare className="w-3 h-3" />
-                          <span>{t.comments?.length || 0}</span>
+                          <span>{tItem.comments?.length || 0}</span>
                         </button>
                       </div>
 
                       {/* Quick Status & Edit */}
                       <div className="pt-1 flex items-center gap-1.5">
                         <select
-                          value={t.status}
-                          onChange={(e) => updateTaskStatus(t.id, e.target.value)}
+                          value={tItem.status}
+                          onChange={(e) => updateTaskStatus(tItem.id, e.target.value)}
                           className="flex-1 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[10px] font-bold text-slate-700 focus:outline-none"
                         >
-                          <option value="To Do">Status: To Do</option>
-                          <option value="In Progress">Status: In Progress</option>
-                          <option value="Completed">Status: Completed</option>
-                          <option value="Overdue">Status: Overdue</option>
+                          <option value="To Do">{t('tasks.status', 'Status')}: {t('tasks.status_todo', 'To Do')}</option>
+                          <option value="In Progress">{t('tasks.status', 'Status')}: {t('tasks.status_in_progress', 'In Progress')}</option>
+                          <option value="Completed">{t('tasks.status', 'Status')}: {t('tasks.status_completed', 'Completed')}</option>
+                          <option value="Overdue">{t('tasks.status', 'Status')}: {t('tasks.status_overdue', 'Overdue')}</option>
                         </select>
 
                         <button
-                          onClick={() => setEditingTask(t)}
+                          onClick={() => setEditingTask(tItem)}
                           className="p-1 text-slate-400 hover:text-amber-600 hover:bg-slate-100 rounded"
-                          title="Edit Task"
+                          title={t('tasks.edit_task', 'Edit Task')}
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
@@ -636,7 +651,7 @@ export default function TasksPage() {
 
                   {colTasks.length === 0 && (
                     <div className="p-8 text-center text-slate-400 text-[11px]">
-                      No tasks in this stage.
+                      {t('tasks.no_tasks_stage', 'No tasks in this stage.')}
                     </div>
                   )}
                 </div>

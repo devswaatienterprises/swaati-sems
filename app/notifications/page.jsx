@@ -31,10 +31,10 @@ export default function NotificationsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
             <Bell className="w-6 h-6 text-blue-600" />
-            <span>Notification & Alert Center</span>
+            <span>{t('notifications.title', 'Notification & Alert Center')}</span>
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            System alerts, lead assignments, leave approvals, task deadlines, and attendance notices.
+            {t('notifications.subtitle', 'System alerts, lead assignments, leave approvals, task deadlines, and attendance notices.')}
           </p>
         </div>
 
@@ -44,7 +44,7 @@ export default function NotificationsPage() {
             className="px-4 py-2 bg-white hover:bg-slate-50 text-blue-600 border border-blue-200 rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-colors self-start md:self-auto"
           >
             <CheckCircle2 className="w-4 h-4" />
-            <span>Mark All as Read</span>
+            <span>{t('notifications.mark_all_read', 'Mark All as Read')}</span>
           </button>
         )}
       </div>
@@ -56,8 +56,8 @@ export default function NotificationsPage() {
             <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-300">
               <Bell className="w-6 h-6" />
             </div>
-            <div className="font-bold text-slate-600 text-sm">You're all caught up.</div>
-            <p className="text-slate-400">No unread notifications at this time.</p>
+            <div className="font-bold text-slate-600 text-sm">{t('notifications.all_caught_up', "You're all caught up.")}</div>
+            <p className="text-slate-400">{t('notifications.no_unread', 'No unread notifications at this time.')}</p>
           </div>
         ) : (
           notifications.map((n) => (
@@ -94,7 +94,7 @@ export default function NotificationsPage() {
                   className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1 shrink-0"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Mark Read</span>
+                  <span>{t('notifications.mark_read', 'Mark Read')}</span>
                 </button>
               )}
             </div>
