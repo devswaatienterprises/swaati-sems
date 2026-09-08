@@ -88,12 +88,48 @@ export function CrmProvider({ children }) {
     [contentBundle, locale]
   );
 
-  // Granular Permission Helper
+  // Two-Level Granular Permission Helper
   const hasPermission = useCallback(
-    (featureKey) => {
+    (key, parentKey) => {
       if (currentRole === 'ADMIN') return true;
       if (!currentUser || !currentUser.permissions) return false;
-      return !!currentUser.permissions[featureKey];
+
+      const parent = parentKey || (key.includes('.') ? key.split('.')[0] : key);
+
+      // LEVEL 1: If parent module is explicitly disabled, all actions under it are denied
+      if (currentUser.permissions[parent] === false) return false;
+      if (parent === key) return !!currentUser.permissions[parent];
+
+      // LEVEL 2: Sub-action permission
+      const actionVal = currentUser.permissions[key];
+      if (actionVal !== undefined) return !!actionVal;
+
+      // Sensitive actions default to false if not explicitly granted
+      const SENSITIVE_ACTIONS = [
+        'leave.approve',
+        'leave.reject',
+        'attendance.approve',
+        'attendance.edit',
+        'attendance.view_team',
+        'leave.view_team',
+        'tasks.view_team',
+        'tasks.delete',
+        'products.create',
+        'products.edit',
+        'products.delete',
+        'leads.delete',
+        'payroll.view',
+        'payroll.manage',
+        'employees.create',
+        'employees.edit',
+        'employees.status',
+        'employees.permissions',
+      ];
+
+      if (SENSITIVE_ACTIONS.includes(key)) return false;
+
+      // Standard actions fallback to parent
+      return !!currentUser.permissions[parent];
     },
     [currentRole, currentUser]
   );
@@ -571,10 +607,12 @@ export function CrmProvider({ children }) {
       permissions: empData.permissions,
       idCardType: empData.idCardType,
       idCardNumber: empData.idCardNumber,
+      password: empData.password,
     });
 
     if (res?.success && res.data) {
       const createdEmployee = res.data;
+      let documents = [];
       // Upload KYC files to R2 if provided
       if (frontImageFile || backImageFile) {
         const kycFormData = new FormData();
@@ -583,7 +621,11 @@ export function CrmProvider({ children }) {
         if (frontImageFile) kycFormData.append('frontImage', frontImageFile);
         if (backImageFile) kycFormData.append('backImage', backImageFile);
 
-        await apiRequest(`/employees/${createdEmployee.id}/documents`, 'POST', kycFormData);
+        const docRes = await apiRequest(`/employees/${createdEmployee.id}/documents`, 'POST', kycFormData);
+        if (docRes?.success && docRes.data) {
+          documents = [docRes.data];
+          createdEmployee.documents = documents;
+        }
       }
 
       const normalized = normalizeEmployee(createdEmployee);
@@ -601,13 +643,45 @@ export function CrmProvider({ children }) {
     return null;
   };
 
-  const updateEmployee = async (empId, updatedData) => {
+  const updateEmployee = async (empId, updatedData, frontImageFile = null, backImageFile = null) => {
     const emp = employees.find((e) => e.id === empId);
     const realId = emp?.realId || empId;
 
     await apiRequest(`/employees/${realId}`, 'PUT', updatedData);
+
+    let newDocs = emp?.documents || [];
+    let updatedFrontUrl = emp?.idCardFrontUrl;
+    let updatedBackUrl = emp?.idCardBackUrl;
+
+    if (frontImageFile || backImageFile) {
+      const kycFormData = new FormData();
+      kycFormData.append('documentType', updatedData.idCardType || emp?.idCardType || 'Aadhaar Card');
+      kycFormData.append('documentNumber', updatedData.idCardNumber || emp?.idCardNumber || 'KYC-DOC');
+      if (frontImageFile) kycFormData.append('frontImage', frontImageFile);
+      if (backImageFile) kycFormData.append('backImage', backImageFile);
+
+      const docRes = await apiRequest(`/employees/${realId}/documents`, 'POST', kycFormData);
+      if (docRes?.success && docRes.data) {
+        newDocs = [docRes.data, ...newDocs.filter((d) => d.id !== docRes.data.id)];
+        if (docRes.data.frontImagePath) updatedFrontUrl = docRes.data.frontImagePath;
+        if (docRes.data.backImagePath) updatedBackUrl = docRes.data.backImagePath;
+      }
+    }
+
     setEmployees((prev) =>
-      prev.map((e) => (e.id === empId ? { ...e, ...updatedData } : e))
+      prev.map((e) =>
+        e.id === empId
+          ? {
+              ...e,
+              ...updatedData,
+              documents: newDocs,
+              idCardType: updatedData.idCardType || e.idCardType,
+              idCardNumber: updatedData.idCardNumber || e.idCardNumber,
+              idCardFrontUrl: updatedFrontUrl,
+              idCardBackUrl: updatedBackUrl,
+            }
+          : e
+      )
     );
   };
 
@@ -1262,6 +1336,135 @@ export function CrmProvider({ children }) {
     document.body.removeChild(link);
   };
 
+  // ========================================================
+  // Unified Content & Translation Management (One Row Per Alias)
+  // ========================================================
+  const [contentItems, setContentItems] = useState([]);
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
+
+  const normalizeContentRow = (item) => ({
+    id: item.id,
+    alias: item.contentKey,
+    module: item.module || 'global',
+    contentType: item.contentType || 'text',
+    description: item.description || '',
+    isActive: item.isActive !== false,
+    updatedAt: item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('en-GB') : '',
+    updatedBy: item.updatedBy || 'Admin',
+    en: item.translations?.find((t) => t.language?.code === 'en' || t.languageId === 'en')?.value || '',
+    mr: item.translations?.find((t) => t.language?.code === 'mr' || t.languageId === 'mr')?.value || '',
+    hi: item.translations?.find((t) => t.language?.code === 'hi' || t.languageId === 'hi')?.value || '',
+    versions: item.versions || [],
+  });
+
+  const fetchContentItems = useCallback(async (moduleFilter = 'all') => {
+    setIsLoadingContent(true);
+    try {
+      const res = await apiRequest(`/content/items?module=${moduleFilter}`);
+      if (res?.success && Array.isArray(res.data)) {
+        const rows = res.data.map(normalizeContentRow);
+        setContentItems(rows);
+        return rows;
+      }
+    } catch (err) {
+      console.warn('[CrmContext fetchContentItems error]:', err);
+    } finally {
+      setIsLoadingContent(false);
+    }
+  }, []);
+
+  const saveContentRow = useCallback(
+    async (rowData) => {
+      try {
+        const res = await apiRequest('/content/row', {
+          method: 'PUT',
+          body: JSON.stringify(rowData),
+        });
+        if (res?.success && res.data) {
+          const updatedRow = normalizeContentRow(res.data);
+          setContentItems((prev) => {
+            const idx = prev.findIndex(
+              (r) => r.alias === updatedRow.alias || r.id === updatedRow.id
+            );
+            if (idx >= 0) {
+              const next = [...prev];
+              next[idx] = updatedRow;
+              return next;
+            }
+            return [updatedRow, ...prev];
+          });
+          loadContentBundle(locale);
+          return { success: true, data: updatedRow };
+        }
+        return { success: false, error: res?.message || 'Failed to save row' };
+      } catch (err) {
+        return { success: false, error: err.message };
+      }
+    },
+    [loadContentBundle, locale]
+  );
+
+  const createContentItem = useCallback(
+    async (itemData) => {
+      try {
+        const res = await apiRequest('/content/items', {
+          method: 'POST',
+          body: JSON.stringify(itemData),
+        });
+        if (res?.success && res.data) {
+          const newRow = normalizeContentRow(res.data);
+          setContentItems((prev) => [newRow, ...prev]);
+          loadContentBundle(locale);
+          return { success: true, data: newRow };
+        }
+        return { success: false, error: res?.message || 'Failed to create item' };
+      } catch (err) {
+        return { success: false, error: err.message };
+      }
+    },
+    [loadContentBundle, locale]
+  );
+
+  const importContentCsv = useCallback(
+    async (rows) => {
+      try {
+        const res = await apiRequest('/content/import-csv', {
+          method: 'POST',
+          body: JSON.stringify({ rows }),
+        });
+        if (res?.success) {
+          await fetchContentItems();
+          loadContentBundle(locale);
+          return res;
+        }
+        return res;
+      } catch (err) {
+        return { success: false, message: err.message };
+      }
+    },
+    [fetchContentItems, loadContentBundle, locale]
+  );
+
+  const renameContentAlias = useCallback(
+    async (id, newAlias) => {
+      try {
+        const res = await apiRequest(`/content/items/${id}/alias`, {
+          method: 'PUT',
+          body: JSON.stringify({ newAlias }),
+        });
+        if (res?.success) {
+          await fetchContentItems();
+          loadContentBundle(locale);
+          return { success: true };
+        }
+        return { success: false, error: res?.message || 'Failed to rename alias' };
+      } catch (err) {
+        return { success: false, error: err.message };
+      }
+    },
+    [fetchContentItems, loadContentBundle, locale]
+  );
+
   return (
     <CrmContext.Provider
       value={{
@@ -1272,6 +1475,13 @@ export function CrmProvider({ children }) {
         availableLanguages,
         contentBundle,
         loadContentBundle,
+        contentItems,
+        isLoadingContent,
+        fetchContentItems,
+        saveContentRow,
+        createContentItem,
+        importContentCsv,
+        renameContentAlias,
 
         // Auth & Role
         currentUser,

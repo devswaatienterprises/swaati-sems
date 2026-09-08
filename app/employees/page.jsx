@@ -99,12 +99,12 @@ export default function EmployeesPage() {
           setEditingEmployee(null);
         }}
         initialData={editingEmployee}
-        onSave={(data) => {
+        onSave={(data, frontFile, backFile) => {
           if (editingEmployee) {
-            updateEmployee(editingEmployee.id, data);
+            updateEmployee(editingEmployee.id, data, frontFile, backFile);
             setEditingEmployee(null);
           } else {
-            addEmployee(data);
+            addEmployee(data, frontFile, backFile);
             setIsAddModalOpen(false);
           }
         }}

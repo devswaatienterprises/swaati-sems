@@ -26,6 +26,7 @@ export default function AttendancePage() {
     toggleCheckIn,
     correctAttendance,
     systemSettings,
+    hasPermission,
     t,
   } = useCrm();
 
@@ -34,14 +35,23 @@ export default function AttendancePage() {
   const [correctionStatus, setCorrectionStatus] = useState('Present');
   const [correctionReason, setCorrectionReason] = useState('');
 
-  const filteredAttendance = attendance.filter(
+  const canCheckIn = hasPermission('attendance.checkin');
+  const canApprove = hasPermission('attendance.approve');
+  const canViewTeam = hasPermission('attendance.view_team');
+
+  const visibleAttendance = attendance.filter((item) => {
+    if (currentRole === 'ADMIN' || canViewTeam) return true;
+    return item.employeeId === currentUser?.id || item.employeeId === currentUser?.realId;
+  });
+
+  const filteredAttendance = visibleAttendance.filter(
     (item) => statusFilter === 'ALL' || item.status === statusFilter
   );
 
-  const presentCount = attendance.filter((a) => a.status === 'Present').length;
-  const lateCount = attendance.filter((a) => a.status === 'Late' || a.isLate).length;
-  const leaveCount = attendance.filter((a) => a.status === 'On Leave').length;
-  const absentCount = attendance.filter((a) => a.status === 'Absent').length;
+  const presentCount = visibleAttendance.filter((a) => a.status === 'Present').length;
+  const lateCount = visibleAttendance.filter((a) => a.status === 'Late' || a.isLate).length;
+  const leaveCount = visibleAttendance.filter((a) => a.status === 'On Leave').length;
+  const absentCount = visibleAttendance.filter((a) => a.status === 'Absent').length;
 
   const handleCorrectSubmit = (e) => {
     e.preventDefault();
@@ -286,10 +296,10 @@ export default function AttendancePage() {
                   </td>
 
                   <td className="py-3.5 px-4 text-right">
-                    {currentRole === 'ADMIN' && (
+                    {(currentRole === 'ADMIN' || canApprove) && (
                       <button
                         onClick={() => setSelectedRecord(item)}
-                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold transition-colors inline-flex items-center gap-1"
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
                       >
                         <Edit2 className="w-3 h-3 text-slate-500" />
                         <span>Correct</span>

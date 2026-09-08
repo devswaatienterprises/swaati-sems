@@ -33,6 +33,7 @@ export default function TasksPage() {
     updateTask,
     updateTaskStatus,
     addTaskComment,
+    hasPermission,
     t,
   } = useCrm();
 
@@ -49,6 +50,12 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState(null);
   const [selectedTaskComments, setSelectedTaskComments] = useState(null);
   const [commentInput, setCommentInput] = useState('');
+
+  const canCreate = hasPermission('tasks.create');
+  const canViewTeam = hasPermission('tasks.view_team');
+  const canEdit = hasPermission('tasks.edit');
+  const canStatus = hasPermission('tasks.status');
+  const canComment = hasPermission('tasks.comments');
 
   const kanbanColumns = ['To Do', 'In Progress', 'Completed', 'Overdue'];
 
@@ -83,8 +90,19 @@ export default function TasksPage() {
     }
   };
 
+  const isRestrictedEmployee = currentRole !== 'ADMIN' && !canViewTeam;
+  const visibleTasks = tasks.filter((task) => {
+    if (!isRestrictedEmployee) return true;
+    return (
+      task.assignedTo === currentUser?.name ||
+      task.assignedToId === currentUser?.id ||
+      task.assignedToId === currentUser?.realId ||
+      task.assignedBy === currentUser?.name
+    );
+  });
+
   // Filter & Search
-  const filteredTasks = tasks
+  const filteredTasks = visibleTasks
     .filter((task) => {
       const term = searchTerm.toLowerCase().trim();
       const matchesSearch =
@@ -256,16 +274,18 @@ export default function TasksPage() {
             </button>
           </div>
 
-          <button
-            onClick={() => {
-              setEditingTask(null);
-              setIsCreateModalOpen(true);
-            }}
-            className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-xs shadow-sm shadow-amber-600/20 flex items-center gap-2 transition-all shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Task</span>
-          </button>
+          {canCreate && (
+            <button
+              onClick={() => {
+                setEditingTask(null);
+                setIsCreateModalOpen(true);
+              }}
+              className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-xs shadow-sm shadow-amber-600/20 flex items-center gap-2 transition-all shrink-0 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create Task</span>
+            </button>
+          )}
         </div>
       </div>
 

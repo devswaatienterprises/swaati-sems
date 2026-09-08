@@ -24,6 +24,7 @@ export default function LeavePage() {
     applyLeave,
     approveLeave,
     rejectLeave,
+    hasPermission,
     t,
   } = useCrm();
 
@@ -31,11 +32,16 @@ export default function LeavePage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [remarksInput, setRemarksInput] = useState({});
 
-  const isEmployee = currentRole !== 'ADMIN';
+  const canApply = hasPermission('leave.apply');
+  const canViewTeam = hasPermission('leave.view_team');
+  const canApprove = hasPermission('leave.approve');
+  const canReject = hasPermission('leave.reject');
+
+  const isEmployee = currentRole !== 'ADMIN' && !canViewTeam;
 
   // Filter leaves
   const displayedLeaves = leaves.filter((l) => {
-    const isMine = !isEmployee || l.employeeId === currentUser.id;
+    const isMine = !isEmployee || l.employeeId === currentUser?.id || l.employeeId === currentUser?.realId;
     const matchesStatus = statusFilter === 'ALL' || l.status === statusFilter;
     return isMine && matchesStatus;
   });
@@ -45,7 +51,7 @@ export default function LeavePage() {
   const rejectedCount = leaves.filter((l) => l.status === 'Rejected').length;
 
   const handleApprove = (leaveId) => {
-    const remarks = remarksInput[leaveId] || 'Approved by Admin';
+    const remarks = remarksInput[leaveId] || 'Approved';
     approveLeave(leaveId, remarks);
     setRemarksInput((prev) => ({ ...prev, [leaveId]: '' }));
   };
@@ -77,13 +83,15 @@ export default function LeavePage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs shadow-sm shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Apply for Leave</span>
-        </button>
+        {canApply && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs shadow-sm shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Apply for Leave</span>
+          </button>
+        )}
       </div>
 
       {/* Leave Balances (For Employees) & Status Counters (For Admin) */}
@@ -203,7 +211,7 @@ export default function LeavePage() {
                   {lv.status}
                 </span>
 
-                {currentRole === 'ADMIN' && lv.status === 'Pending' && (
+                {(currentRole === 'ADMIN' || canApprove || canReject) && lv.status === 'Pending' && (
                   <div className="flex items-center gap-2 mt-1">
                     <input
                       type="text"
@@ -212,18 +220,22 @@ export default function LeavePage() {
                       onChange={(e) => setRemarksInput({ ...remarksInput, [lv.id]: e.target.value })}
                       className="px-2.5 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 w-36"
                     />
-                    <button
-                      onClick={() => handleApprove(lv.id)}
-                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-colors"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleReject(lv.id)}
-                      className="px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg text-xs transition-colors"
-                    >
-                      Reject
-                    </button>
+                    {(currentRole === 'ADMIN' || canApprove) && (
+                      <button
+                        onClick={() => handleApprove(lv.id)}
+                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-colors cursor-pointer"
+                      >
+                        Approve
+                      </button>
+                    )}
+                    {(currentRole === 'ADMIN' || canReject) && (
+                      <button
+                        onClick={() => handleReject(lv.id)}
+                        className="px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg text-xs transition-colors cursor-pointer"
+                      >
+                        Reject
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

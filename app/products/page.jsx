@@ -29,6 +29,7 @@ export default function ProductsPage() {
     replaceProductDocument,
     getProductDocumentSignedUrl,
     deleteProductDocument,
+    hasPermission,
     t,
   } = useCrm();
 
@@ -38,6 +39,10 @@ export default function ProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [expandedProductIds, setExpandedProductIds] = useState(new Set());
+
+  const canCreate = hasPermission('products.create');
+  const canEdit = hasPermission('products.edit');
+  const canDelete = hasPermission('products.delete');
 
   const filteredProducts = products.filter(
     (p) =>
@@ -265,10 +270,10 @@ export default function ProductsPage() {
                                   <span>Available Technical Documents for {prod.name} ({docCount})</span>
                                 </div>
 
-                                {currentRole === 'ADMIN' && (
+                                {(currentRole === 'ADMIN' || canEdit) && (
                                   <button
                                     onClick={(e) => handleUploadClick(prod, e)}
-                                    className="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold shadow-xs inline-flex items-center gap-1.5 transition-colors self-start sm:self-auto"
+                                    className="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold shadow-xs inline-flex items-center gap-1.5 transition-colors self-start sm:self-auto cursor-pointer"
                                   >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Upload Document</span>
@@ -279,10 +284,10 @@ export default function ProductsPage() {
                               {(!prod.documents || prod.documents.length === 0) ? (
                                 <div className="p-6 bg-slate-50 rounded-xl text-center text-slate-400 text-xs font-medium space-y-1">
                                   <div>No documents currently uploaded for this product.</div>
-                                  {currentRole === 'ADMIN' && (
+                                  {(currentRole === 'ADMIN' || canEdit) && (
                                     <button
                                       onClick={(e) => handleUploadClick(prod, e)}
-                                      className="text-blue-600 font-bold text-xs hover:underline inline-block mt-1"
+                                      className="text-blue-600 font-bold text-xs hover:underline inline-block mt-1 cursor-pointer"
                                     >
                                       Upload Technical Datasheet (TDS)
                                     </button>
@@ -326,25 +331,26 @@ export default function ProductsPage() {
                                           <span>Download</span>
                                         </button>
 
-                                        {currentRole === 'ADMIN' && (
-                                          <>
-                                            <button
-                                              onClick={(e) => handleReplaceClick(prod, doc, e)}
-                                              className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-colors"
-                                              title="Replace with updated version"
-                                            >
-                                              <RefreshCw className="w-3.5 h-3.5" />
-                                              <span>Replace</span>
-                                            </button>
+                                        {(currentRole === 'ADMIN' || canEdit) && (
+                                          <button
+                                            onClick={(e) => handleReplaceClick(prod, doc, e)}
+                                            className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                                            title="Replace with updated version"
+                                          >
+                                            <RefreshCw className="w-3.5 h-3.5" />
+                                            <span>Replace</span>
+                                          </button>
+                                        )}
 
-                                            <button
-                                              onClick={(e) => handleDeleteDoc(prod.id, doc.id, e)}
-                                              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                                              title="Delete Document"
-                                            >
-                                              <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
-                                          </>
+                                        {(currentRole === 'ADMIN' || canDelete) && (
+                                          <button
+                                            onClick={(e) => handleDeleteDoc(prod.id, doc.id, e)}
+                                            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                                            title="Delete document"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                            <span>Delete</span>
+                                          </button>
                                         )}
                                       </div>
                                     </div>
