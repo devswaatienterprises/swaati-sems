@@ -12,9 +12,7 @@ import {
   Save,
   CheckCircle2,
   History,
-  Languages,
 } from 'lucide-react';
-import TranslationGrid from '@/components/TranslationGrid';
 
 export default function SettingsPage() {
   const {
@@ -26,7 +24,7 @@ export default function SettingsPage() {
     t,
   } = useCrm();
 
-  const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'timing' | 'audit' | 'translations'
+  const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'timing' | 'audit'
   const [officeStartTime, setOfficeStartTime] = useState(systemSettings.officeStartTime || '10:00 AM');
   const [gracePeriod, setGracePeriod] = useState(systemSettings.gracePeriodMinutes || 15);
   const [toastMessage, setToastMessage] = useState('');
@@ -59,7 +57,7 @@ export default function SettingsPage() {
             <span>System & Profile Settings</span>
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            Manage your user profile, multi-language copy & translations, configurable shift start times, and administrative activity logs.
+            Manage your user profile, configurable shift start times, and administrative activity logs.
           </p>
         </div>
       </div>
@@ -79,16 +77,6 @@ export default function SettingsPage() {
 
           {currentRole === 'ADMIN' && (
             <>
-              <button
-                onClick={() => setActiveTab('translations')}
-                className={`w-full text-left px-3.5 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
-                  activeTab === 'translations' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <Languages className="w-4 h-4" />
-                <span>Translations & Copy</span>
-              </button>
-
               <button
                 onClick={() => setActiveTab('timing')}
                 className={`w-full text-left px-3.5 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
@@ -114,13 +102,6 @@ export default function SettingsPage() {
 
         {/* Right Content Panels */}
         <div className="lg:col-span-3">
-          {/* TAB 0: TRANSLATIONS & COPY (Admin Only) */}
-          {activeTab === 'translations' && currentRole === 'ADMIN' && (
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
-              <TranslationGrid />
-            </div>
-          )}
-
           {/* TAB 1: PROFILE */}
           {activeTab === 'profile' && (
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4 text-xs">

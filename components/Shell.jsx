@@ -32,6 +32,7 @@ export default function Shell({ children }) {
     '/reports': 'reports',
     '/notifications': 'notifications',
     '/messages': 'messaging',
+    '/translations': 'adminOnly',
     '/settings': null, // allowed for all (my profile)
   };
 
