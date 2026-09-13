@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCrm } from '@/context/CrmContext';
 import { Eye, EyeOff, Lock, Mail, User, ShieldCheck, ArrowRight, AlertCircle } from 'lucide-react';
+import logoImg from '../public/images/se-logo.webp';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -53,7 +54,7 @@ export default function LoginPage() {
         <div className="flex justify-center mb-4">
           <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center p-2.5 shadow-xl shadow-black/20 shrink-0">
             <Image
-              src="/images/se-logo.webp"
+              src={logoImg}
               alt="Swaati Enterprises Logo"
               width={64}
               height={64}

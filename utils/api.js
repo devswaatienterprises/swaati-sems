@@ -1,6 +1,19 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+export function getApiBaseUrl() {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
+  }
+  // In production browser environments (Vercel, custom domain), never fall back to localhost
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return 'https://swaati-sems-api.onrender.com/api/v1';
+    }
+  }
+  return 'http://localhost:4000/api/v1';
+}
 
 export async function apiRequest(endpoint, method = 'GET', data = null, customHeaders = {}) {
+  const baseUrl = getApiBaseUrl();
   const token = typeof window !== 'undefined' ? localStorage.getItem('crm_token') : null;
 
   const headers = {
@@ -28,7 +41,7 @@ export async function apiRequest(endpoint, method = 'GET', data = null, customHe
   }
 
   try {
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, options);
+    const res = await fetch(`${baseUrl}${endpoint}`, options);
     const json = await res.json();
     return json;
   } catch (err) {

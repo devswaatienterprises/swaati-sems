@@ -3,6 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import logoImg from '../public/images/se-logo.webp';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCrm } from '@/context/CrmContext';
 import {
@@ -131,7 +132,7 @@ export default function Sidebar({ isOpen, onClose }) {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white p-1.5 flex items-center justify-center shadow-sm shadow-black/20 shrink-0">
               <Image
-                src="/images/se-logo.webp"
+                src={logoImg}
                 alt="Swaati Enterprises Logo"
                 width={40}
                 height={40}

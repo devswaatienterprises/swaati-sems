@@ -2,6 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   basePath: '/sems',
+  images: {
+    unoptimized: true,
+  },
   async redirects() {
     return [
       {
