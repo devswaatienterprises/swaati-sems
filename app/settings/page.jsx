@@ -3,11 +3,13 @@
 import React, { useState } from 'react';
 import Shell from '@/components/Shell';
 import { useCrm } from '@/context/CrmContext';
+import DepartmentSettings from '@/components/settings/DepartmentSettings';
+import RoleSettings from '@/components/settings/RoleSettings';
 import {
   Settings as SettingsIcon,
   Clock,
   Building2,
-  ShieldCheck,
+  Shield,
   User,
   Save,
   CheckCircle2,
@@ -23,7 +25,7 @@ export default function SettingsPage() {
     t,
   } = useCrm();
 
-  const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'timing' | 'audit'
+  const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'departments' | 'roles' | 'timing'
   const [officeStartTime, setOfficeStartTime] = useState(systemSettings.officeStartTime || '10:00 AM');
   const [gracePeriod, setGracePeriod] = useState(systemSettings.gracePeriodMinutes || 15);
   const [toastMessage, setToastMessage] = useState('');
@@ -56,7 +58,7 @@ export default function SettingsPage() {
             <span>{t('settings.title', 'System & Profile Settings')}</span>
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            {t('settings.subtitle', 'Manage your user profile, configurable shift start times, and administrative activity logs.')}
+            {t('settings.subtitle', 'Manage departments, role SOP recurring tasks, working hours, and profile settings.')}
           </p>
         </div>
       </div>
@@ -75,15 +77,37 @@ export default function SettingsPage() {
           </button>
 
           {currentRole === 'ADMIN' && (
-            <button
-              onClick={() => setActiveTab('timing')}
-              className={`w-full text-left px-3.5 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
-                activeTab === 'timing' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <Clock className="w-4 h-4" />
-              <span>{t('settings.office_timing', 'Office Shift Timing')}</span>
-            </button>
+            <>
+              <button
+                onClick={() => setActiveTab('departments')}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
+                  activeTab === 'departments' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <Building2 className="w-4 h-4" />
+                <span>{t('settings.departments_tab', 'Departments')}</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('roles')}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
+                  activeTab === 'roles' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <Shield className="w-4 h-4" />
+                <span>{t('settings.roles_tab', 'Roles & SOP Tasks')}</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('timing')}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
+                  activeTab === 'timing' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <Clock className="w-4 h-4" />
+                <span>{t('settings.office_timing', 'Office Shift Timing')}</span>
+              </button>
+            </>
           )}
         </div>
 
@@ -159,6 +183,12 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+
+          {/* TAB 2: DEPARTMENTS (Admin Only) */}
+          {activeTab === 'departments' && currentRole === 'ADMIN' && <DepartmentSettings />}
+
+          {/* TAB 3: ROLES & RECURRING TASKS (Admin Only) */}
+          {activeTab === 'roles' && currentRole === 'ADMIN' && <RoleSettings />}
 
           {/* TAB 2: TIMING CONFIGURATION (Admin Only) */}
           {activeTab === 'timing' && currentRole === 'ADMIN' && (

@@ -37,6 +37,8 @@ export function CrmProvider({ children }) {
 
   // Domain State Collections (Live Database Records)
   const [employees, setEmployees] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [leaves, setLeaves] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -416,6 +418,8 @@ export function CrmProvider({ children }) {
         auditRes,
         convoRes,
         recTaskRes,
+        deptRes,
+        roleRes,
       ] = await Promise.all([
         apiRequest('/employees'),
         apiRequest('/attendance'),
@@ -428,7 +432,16 @@ export function CrmProvider({ children }) {
         apiRequest('/audit'),
         apiRequest('/messages/conversations'),
         apiRequest('/tasks/recurring'),
+        apiRequest('/departments'),
+        apiRequest('/roles'),
       ]);
+
+      if (deptRes?.success && deptRes.data) {
+        setDepartments(deptRes.data);
+      }
+      if (roleRes?.success && roleRes.data) {
+        setRoles(roleRes.data);
+      }
 
       if (empRes?.success && empRes.data) {
         setEmployees(empRes.data.map(normalizeEmployee));
@@ -735,6 +748,21 @@ export function CrmProvider({ children }) {
       return true;
     }
     return false;
+  };
+
+  const getEmployeePassword = async (empId) => {
+    const emp = employees.find((e) => e.id === empId || e.realId === empId);
+    const realId = emp?.realId || empId;
+    const res = await apiRequest(`/employees/${realId}/password`);
+    if (res?.success && res?.data) {
+      return res.data;
+    }
+    return {
+      hasRecoverablePassword: false,
+      password: null,
+      isLegacyBcrypt: false,
+      message: res?.message || 'Failed to fetch password',
+    };
   };
 
   const updateEmployee = async (empId, updatedData, frontImageFile = null, backImageFile = null) => {
@@ -1897,6 +1925,81 @@ export function CrmProvider({ children }) {
     return [];
   };
 
+  // Department & Role Management API Integrations
+  const fetchDepartments = useCallback(async () => {
+    try {
+      const res = await apiRequest('/departments');
+      if (res?.success && res.data) {
+        setDepartments(res.data);
+      }
+      return res;
+    } catch (err) {
+      console.error('fetchDepartments Error:', err);
+    }
+  }, []);
+
+  const createDepartment = async (payload) => {
+    const res = await apiRequest('/departments', 'POST', payload);
+    if (res?.success) {
+      await fetchDepartments();
+    }
+    return res;
+  };
+
+  const updateDepartment = async (id, payload) => {
+    const res = await apiRequest(`/departments/${id}`, 'PUT', payload);
+    if (res?.success) {
+      await fetchDepartments();
+    }
+    return res;
+  };
+
+  const deactivateDepartment = async (id, active) => {
+    const res = await apiRequest(`/departments/${id}/status`, 'PATCH', { active });
+    if (res?.success) {
+      await fetchDepartments();
+    }
+    return res;
+  };
+
+  const fetchRoles = useCallback(async () => {
+    try {
+      const res = await apiRequest('/roles');
+      if (res?.success && res.data) {
+        setRoles(res.data);
+      }
+      return res;
+    } catch (err) {
+      console.error('fetchRoles Error:', err);
+    }
+  }, []);
+
+  const createRole = async (payload) => {
+    const res = await apiRequest('/roles', 'POST', payload);
+    if (res?.success) {
+      await fetchRoles();
+      await fetchAllData();
+    }
+    return res;
+  };
+
+  const updateRole = async (id, payload) => {
+    const res = await apiRequest(`/roles/${id}`, 'PUT', payload);
+    if (res?.success) {
+      await fetchRoles();
+      await fetchAllData();
+    }
+    return res;
+  };
+
+  const deactivateRole = async (id, active) => {
+    const res = await apiRequest(`/roles/${id}/status`, 'PATCH', { active });
+    if (res?.success) {
+      await fetchRoles();
+    }
+    return res;
+  };
+
   // ========================================================
   return (
     <CrmContext.Provider
@@ -1920,12 +2023,26 @@ export function CrmProvider({ children }) {
         hasPermission,
         fetchAllData,
 
+        // Departments & Roles
+        departments,
+        fetchDepartments,
+        createDepartment,
+        updateDepartment,
+        deactivateDepartment,
+
+        roles,
+        fetchRoles,
+        createRole,
+        updateRole,
+        deactivateRole,
+
         // Domain Collections & Operations
         employees,
         addEmployee,
         getEmployeeKycSignedUrls,
         deleteEmployeeDocument,
         getEmployeeActivityLogs,
+        getEmployeePassword,
         updateEmployee,
         deactivateEmployee,
         reactivateEmployee,

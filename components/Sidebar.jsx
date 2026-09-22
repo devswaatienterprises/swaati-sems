@@ -161,7 +161,7 @@ export default function Sidebar({ isOpen, onClose }) {
         </div>
 
         {/* User / Mode Banner */}
-        <div className="shrink-0 px-5 py-3 bg-slate-800/60 border-b border-slate-800 flex items-center justify-between">
+        <div className="shrink-0 px-4 py-2.5 bg-slate-800/60 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2 truncate">
             <div className="w-6 h-6 rounded-full bg-slate-700 text-slate-200 text-[10px] font-bold flex items-center justify-center">
               {currentUser?.avatar || 'SE'}
@@ -182,7 +182,7 @@ export default function Sidebar({ isOpen, onClose }) {
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-3.5 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto no-scrollbar flex flex-col justify-start">
           {filteredNavItems.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -193,7 +193,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 key={item.key}
                 href={item.href}
                 onClick={onClose}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                   isActive
                     ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
                     : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
@@ -207,10 +207,10 @@ export default function Sidebar({ isOpen, onClose }) {
         </nav>
 
         {/* Logout Action (Separated after Settings) */}
-        <div className="shrink-0 px-3.5 pt-2 pb-1 border-t border-slate-800/80">
+        <div className="shrink-0 px-3 pt-1.5 pb-1 border-t border-slate-800/80">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 transition-all text-left cursor-pointer"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-bold text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 transition-all text-left cursor-pointer"
           >
             <LogOut className="w-4 h-4 text-rose-400" />
             <span>{t('logout', 'Logout')}</span>
@@ -218,7 +218,7 @@ export default function Sidebar({ isOpen, onClose }) {
         </div>
 
         {/* Footer Info */}
-        <div className="shrink-0 p-4 border-t border-slate-800 text-[10px] text-slate-500 text-center font-medium">
+        <div className="shrink-0 px-3 py-2.5 border-t border-slate-800 text-[10px] text-slate-500 text-center font-medium">
           {t('nav.footer_info', 'SEMS v2.0 • Swaati Enterprises © 2026')}
         </div>
       </aside>

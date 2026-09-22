@@ -40,7 +40,7 @@ import {
 import { useCrm } from '@/context/CrmContext';
 
 export default function EmployeeModal({ isOpen, onClose, onSave, initialData = null }) {
-  const { getEmployeeKycSignedUrls, deleteEmployeeDocument, t } = useCrm();
+  const { getEmployeeKycSignedUrls, deleteEmployeeDocument, getEmployeePassword, departments, roles, t } = useCrm();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -73,6 +73,9 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
   const [existingFrontSignedUrl, setExistingFrontSignedUrl] = useState(null);
   const [existingBackSignedUrl, setExistingBackSignedUrl] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoadingPassword, setIsLoadingPassword] = useState(false);
+  const [legacyPasswordHint, setLegacyPasswordHint] = useState(null);
+  const [passwordFetched, setPasswordFetched] = useState(false);
   const [activeTab, setActiveTab] = useState('basic'); // 'basic' | 'documents' | 'permissions'
   const [expandedModules, setExpandedModules] = useState({
     attendance: true,
@@ -97,6 +100,9 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
     setExistingFrontSignedUrl(null);
     setExistingBackSignedUrl(null);
     setShowPassword(false);
+    setIsLoadingPassword(false);
+    setLegacyPasswordHint(null);
+    setPasswordFetched(false);
 
     if (initialData) {
       const doc = initialData.documents?.[0];
@@ -105,6 +111,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
 
       setFormData({
         ...initialData,
+        password: (initialData.user || initialData.userId) ? '••••••••' : '',
         role: initialData.role || initialData.user?.role || 'OPERATION_HEAD',
         idCardType: initialData.idCardType || doc?.documentType || 'Aadhaar Card',
         idCardNumber: initialData.idCardNumber || doc?.documentNumber || '',
@@ -177,9 +184,17 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
     }
   }, [backFile]);
 
+  const handleTogglePassword = () => {
+    setShowPassword((prev) => !prev);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData, frontFile, backFile);
+    const payload = { ...formData };
+    if (initialData && (payload.password === '••••••••' || !payload.password)) {
+      delete payload.password;
+    }
+    onSave(payload, frontFile, backFile);
     onClose();
   };
 
@@ -567,15 +582,29 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  {initialData ? t('employees.form.password_credentials', 'Password / Credentials') : `${t('employees.form.initial_password', 'Initial Password')} *`}
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-700">
+                    {initialData
+                      ? (initialData.user || initialData.userId || initialData.userRefId)
+                        ? t('employees.form.password_credentials', 'Password / Credentials')
+                        : t('employees.form.add_password', 'Add Password')
+                      : `${t('employees.form.initial_password', 'Initial Password')} *`}
+                  </label>
+                  {initialData && passwordFetched && !legacyPasswordHint && (
+                    <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3" /> Encrypted & Recoverable
+                    </span>
+                  )}
+                </div>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required={!initialData}
                     value={formData.password || ''}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, password: e.target.value });
+                      if (legacyPasswordHint) setLegacyPasswordHint(null);
+                    }}
                     placeholder={
                       initialData
                         ? '•••••••• (Enter new password to change)'
@@ -586,18 +615,34 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                   <button
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={handleTogglePassword}
+                    disabled={isLoadingPassword}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                     tabIndex={-1}
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {isLoadingPassword ? (
+                      <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
+                    ) : showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
                 {initialData && (
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    {t('employees.form.password_hint', 'Default is hidden. Click the eye icon to view or type a new password to update.')}
-                  </p>
+                  <div className="mt-1 space-y-1">
+                    {legacyPasswordHint ? (
+                      <div className="p-2 rounded-md bg-amber-50 border border-amber-200 text-[11px] text-amber-800 flex items-start gap-1.5">
+                        <ShieldAlert className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                        <span>{legacyPasswordHint}</span>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-slate-400">
+                        {t('employees.form.password_hint', 'Password is hidden for security. Type a new password to reset it.')}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -628,29 +673,87 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">{t('employees.form.department', 'Department')}</label>
                   <select
-                    value={formData.department}
-                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    value={formData.departmentId || formData.department}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const matchedDept = (departments || []).find((d) => d.id === val || d.name === val);
+                      setFormData({
+                        ...formData,
+                        departmentId: matchedDept ? matchedDept.id : '',
+                        department: matchedDept ? matchedDept.name : val,
+                      });
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   >
-                    <option value="Technical & Operations">{t('dept.technical_ops', 'Technical & Operations')}</option>
-                    <option value="Sales & Business Dev">{t('dept.sales_dev', 'Sales & Business Dev')}</option>
-                    <option value="Site Execution">{t('dept.site_execution', 'Site Execution')}</option>
-                    <option value="Customer Support">{t('dept.customer_support', 'Customer Support')}</option>
-                    <option value="Executive Management">{t('dept.executive_mgmt', 'Executive Management')}</option>
+                    <option value="">Select Department</option>
+                    {(departments || []).length > 0 ? (
+                      (departments || [])
+                        .filter((d) => d.active || d.id === formData.departmentId)
+                        .map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name}
+                          </option>
+                        ))
+                    ) : (
+                      <>
+                        <option value="Technical & Operations">{t('dept.technical_ops', 'Technical & Operations')}</option>
+                        <option value="Sales & Business Dev">{t('dept.sales_dev', 'Sales & Business Dev')}</option>
+                        <option value="Site Execution">{t('dept.site_execution', 'Site Execution')}</option>
+                        <option value="Customer Support">{t('dept.customer_support', 'Customer Support')}</option>
+                        <option value="Executive Management">{t('dept.executive_mgmt', 'Executive Management')}</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">{t('employees.form.designation', 'Designation')}</label>
-                  <input
-                    type="text"
-                    value={formData.designation}
-                    onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-                    placeholder="e.g. Senior Site Engineer"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {t('employees.form.designation', 'Designation / Configured Role')}
+                  </label>
+                  {(roles || []).length > 0 ? (
+                    <select
+                      value={formData.roleId || ''}
+                      onChange={(e) => {
+                        const selectedRoleId = e.target.value;
+                        const matchedRole = (roles || []).find((r) => r.id === selectedRoleId);
+                        if (matchedRole) {
+                          setFormData({
+                            ...formData,
+                            roleId: matchedRole.id,
+                            designation: matchedRole.name,
+                            departmentId: matchedRole.departmentId || matchedRole.department?.id,
+                            department: matchedRole.department?.name || formData.department,
+                          });
+                        } else {
+                          setFormData({ ...formData, roleId: '' });
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    >
+                      <option value="">Select Configured Role (Auto-Assigns SOP Tasks)</option>
+                      {(roles || [])
+                        .filter(
+                          (r) =>
+                            (r.active || r.id === formData.roleId) &&
+                            (!formData.departmentId || r.departmentId === formData.departmentId || r.department?.id === formData.departmentId)
+                        )
+                        .map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name} ({r.department?.name || 'Role'})
+                          </option>
+                        ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={formData.designation}
+                      onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                      placeholder="e.g. Senior Site Engineer"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  )}
                 </div>
 
                 <div>
