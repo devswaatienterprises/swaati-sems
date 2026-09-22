@@ -2,11 +2,11 @@ export function getApiBaseUrl() {
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
   }
-  // In production browser environments (Vercel, custom domain), never fall back to localhost
+  // In production browser environments (Vercel, custom domain), fallback to production backend API URL
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      return 'https://swaati-sems-api.onrender.com/api/v1';
+      return 'https://api.swaatienterprises.com/api/v1';
     }
   }
   return 'http://localhost:4000/api/v1';
