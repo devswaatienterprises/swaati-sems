@@ -108,10 +108,11 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
       const doc = initialData.documents?.[0];
       const frontUrl = initialData.idCardFrontUrl || doc?.frontImagePath || '';
       const backUrl = initialData.idCardBackUrl || doc?.backImagePath || '';
+      const empId = initialData.realId || initialData.id;
 
       setFormData({
         ...initialData,
-        password: (initialData.user || initialData.userId) ? '••••••••' : '',
+        password: initialData.password || '',
         role: initialData.role || initialData.user?.role || 'OPERATION_HEAD',
         idCardType: initialData.idCardType || doc?.documentType || 'Aadhaar Card',
         idCardNumber: initialData.idCardNumber || doc?.documentNumber || '',
@@ -125,9 +126,25 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
         approvedRadiusMeters: initialData.approvedRadiusMeters != null ? initialData.approvedRadiusMeters : 200,
       });
 
+      // Pre-fetch actual saved password if available
+      if (empId && getEmployeePassword) {
+        setIsLoadingPassword(true);
+        getEmployeePassword(empId)
+          .then((res) => {
+            if (res?.password) {
+              setFormData((prev) => ({
+                ...prev,
+                password: res.password,
+              }));
+              setPasswordFetched(true);
+            }
+          })
+          .catch((err) => console.warn('[EmployeeModal getEmployeePassword]', err))
+          .finally(() => setIsLoadingPassword(false));
+      }
+
       // Pre-fetch signed URLs for existing documents if available
       const docId = doc?.id || 'kyc';
-      const empId = initialData.realId || initialData.id;
       if (empId && (frontUrl || backUrl) && getEmployeeKycSignedUrls) {
         getEmployeeKycSignedUrls(empId, docId)
           .then((res) => {
@@ -184,14 +201,33 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
     }
   }, [backFile]);
 
-  const handleTogglePassword = () => {
-    setShowPassword((prev) => !prev);
+  const handleTogglePassword = async () => {
+    const nextShow = !showPassword;
+    setShowPassword(nextShow);
+
+    if (nextShow && !formData.password && initialData && getEmployeePassword) {
+      const empId = initialData.realId || initialData.id;
+      if (empId) {
+        setIsLoadingPassword(true);
+        try {
+          const res = await getEmployeePassword(empId);
+          if (res?.password) {
+            setFormData((prev) => ({ ...prev, password: res.password }));
+            setPasswordFetched(true);
+          }
+        } catch (err) {
+          console.warn('[EmployeeModal toggle fetch password]', err);
+        } finally {
+          setIsLoadingPassword(false);
+        }
+      }
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const payload = { ...formData };
-    if (initialData && (payload.password === '••••••••' || !payload.password)) {
+    if (initialData && (payload.password === '••••••••' || payload.password === undefined)) {
       delete payload.password;
     }
     onSave(payload, frontFile, backFile);
@@ -607,7 +643,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                     }}
                     placeholder={
                       initialData
-                        ? '•••••••• (Enter new password to change)'
+                        ? 'Enter password or view saved'
                         : 'Provide temporary login password'
                     }
                     className="w-full pl-3 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"

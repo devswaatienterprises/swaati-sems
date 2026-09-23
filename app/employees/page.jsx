@@ -41,8 +41,9 @@ export default function EmployeesPage() {
   const [statusFilter, setStatusFilter] = useState('ACTIVE'); // 'ACTIVE' | 'INACTIVE' | 'ALL'
   const [deptFilter, setDeptFilter] = useState('ALL');
 
-  // Modals & Adding
+  // Modals & Adding / Editing
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
 
   // Dropdown state for three-dot menu
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -111,14 +112,22 @@ export default function EmployeesPage() {
 
   return (
     <Shell>
-      {/* Add Team Member Modal */}
+      {/* Add / Edit Team Member Modal */}
       <EmployeeModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        initialData={null}
-        onSave={(data, frontFile, backFile) => {
-          addEmployee(data, frontFile, backFile);
+        isOpen={isAddModalOpen || !!editingEmployee}
+        onClose={() => {
           setIsAddModalOpen(false);
+          setEditingEmployee(null);
+        }}
+        initialData={editingEmployee}
+        onSave={(data, frontFile, backFile) => {
+          if (editingEmployee) {
+            updateEmployee(editingEmployee.id, data, frontFile, backFile);
+          } else {
+            addEmployee(data, frontFile, backFile);
+          }
+          setIsAddModalOpen(false);
+          setEditingEmployee(null);
         }}
       />
 
@@ -345,6 +354,21 @@ export default function EmployeesPage() {
                             <User className="w-4 h-4 text-slate-400" />
                             <span>{t('employees.menu.view_profile', 'View Profile')}</span>
                           </Link>
+
+                          {/* 2. Edit Member */}
+                          {currentRole === 'ADMIN' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                setEditingEmployee(emp);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors text-left cursor-pointer"
+                            >
+                              <Edit2 className="w-4 h-4 text-slate-400" />
+                              <span>{t('employees.menu.edit', 'Edit Member')}</span>
+                            </button>
+                          )}
 
                           <div className="my-1 border-t border-slate-100" />
 
