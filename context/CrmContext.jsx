@@ -622,11 +622,13 @@ export function CrmProvider({ children }) {
   }, [isAuthenticated, fetchAllData]);
 
   // Login Handler (Real Database Authentication)
-  const login = async (credential, password, mode = 'ADMIN') => {
-    const payload =
-      mode === 'ADMIN'
-        ? { email: credential, password }
-        : { userId: credential, password };
+  const login = async (credential, password, mode) => {
+    const trimmed = (credential || '').trim();
+    const payload = mode === 'EMPLOYEE'
+      ? { userId: trimmed, password }
+      : mode === 'ADMIN'
+      ? { email: trimmed, password }
+      : { email: trimmed, userId: trimmed, password };
 
     const res = await apiRequest('/auth/login', 'POST', payload);
     if (res?.success && res.data) {
