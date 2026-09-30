@@ -653,7 +653,7 @@ export function CrmProvider({ children }) {
       return { success: true };
     }
 
-    return { success: false, message: res?.message || 'Login failed. Please check credentials.' };
+    return { success: false, message: res?.message || res?.error?.message || 'Login failed. Please check credentials.' };
   };
 
   // Logout Handler
