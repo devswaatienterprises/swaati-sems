@@ -714,10 +714,14 @@ export function CrmProvider({ children }) {
 
       const normalized = normalizeEmployee(createdEmployee);
       setEmployees((prev) => [normalized, ...prev]);
-      return normalized;
+      return { success: true, data: normalized };
     }
-    return null;
+    return {
+      success: false,
+      error: res?.error || res?.message || 'Failed to create team member. Server error occurred.',
+    };
   };
+
 
   const getEmployeeKycSignedUrls = async (empId, docId) => {
     const res = await apiRequest(`/employees/${empId}/documents/${docId}/signed-url`);
@@ -796,7 +800,13 @@ export function CrmProvider({ children }) {
     const emp = employees.find((e) => e.id === empId);
     const realId = emp?.realId || empId;
 
-    await apiRequest(`/employees/${realId}`, 'PUT', updatedData);
+    const res = await apiRequest(`/employees/${realId}`, 'PUT', updatedData);
+    if (!res?.success) {
+      return {
+        success: false,
+        error: res?.error || res?.message || 'Failed to update team member. Server error occurred.',
+      };
+    }
 
     if (updatedData.permissions) {
       await apiRequest(`/employees/${realId}/permissions`, 'PATCH', {
@@ -838,7 +848,9 @@ export function CrmProvider({ children }) {
           : e
       )
     );
+    return { success: true };
   };
+
 
   const deactivateEmployee = async (empId) => {
     const emp = employees.find((e) => e.id === empId);

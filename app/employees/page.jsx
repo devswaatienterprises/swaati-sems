@@ -120,15 +120,14 @@ export default function EmployeesPage() {
           setEditingEmployee(null);
         }}
         initialData={editingEmployee}
-        onSave={(data, frontFile, backFile) => {
+        onSave={async (data, frontFile, backFile) => {
           if (editingEmployee) {
-            updateEmployee(editingEmployee.id, data, frontFile, backFile);
+            return await updateEmployee(editingEmployee.id, data, frontFile, backFile);
           } else {
-            addEmployee(data, frontFile, backFile);
+            return await addEmployee(data, frontFile, backFile);
           }
-          setIsAddModalOpen(false);
-          setEditingEmployee(null);
         }}
+
       />
 
       {/* Deactivate Confirmation Modal */}

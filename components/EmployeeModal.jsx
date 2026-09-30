@@ -31,6 +31,7 @@ import {
   Shield,
   ShieldAlert,
   Trash2,
+  AlertCircle,
 } from 'lucide-react';
 import {
   DEFAULT_PERMISSIONS,
@@ -42,7 +43,11 @@ import { useCrm } from '@/context/CrmContext';
 export default function EmployeeModal({ isOpen, onClose, onSave, initialData = null }) {
   const { getEmployeeKycSignedUrls, deleteEmployeeDocument, getEmployeePassword, departments, roles, t } = useCrm();
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+
   const [formData, setFormData] = useState({
+
     name: '',
     userId: '',
     password: '',
@@ -103,8 +108,11 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
     setIsLoadingPassword(false);
     setLegacyPasswordHint(null);
     setPasswordFetched(false);
+    setSubmitError(null);
+    setIsSubmitting(false);
 
     if (initialData) {
+
       const doc = initialData.documents?.[0];
       const frontUrl = initialData.idCardFrontUrl || doc?.frontImagePath || '';
       const backUrl = initialData.idCardBackUrl || doc?.backImagePath || '';
@@ -224,15 +232,30 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const payload = { ...formData };
-    if (initialData && (payload.password === '••••••••' || payload.password === undefined)) {
-      delete payload.password;
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      const payload = { ...formData };
+      if (initialData && (payload.password === '••••••••' || payload.password === undefined)) {
+        delete payload.password;
+      }
+      const res = await onSave(payload, frontFile, backFile);
+      if (res && res.success === false) {
+        setSubmitError(res.error || 'Failed to save team member profile. Server error occurred.');
+        setIsSubmitting(false);
+        return;
+      }
+      onClose();
+    } catch (err) {
+      setSubmitError(err.message || 'An unexpected error occurred while saving.');
+
+    } finally {
+      setIsSubmitting(false);
     }
-    onSave(payload, frontFile, backFile);
-    onClose();
   };
+
 
   const moduleIconMap = {
     dashboard: LayoutDashboard,
@@ -559,6 +582,16 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+          {submitError && (
+            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2.5 mb-2 animate-in fade-in">
+              <AlertCircle className="w-4.5 h-4.5 text-rose-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="font-bold text-rose-900 mb-0.5">Failed to save team member profile</div>
+                <div className="text-rose-700 text-[11px] font-medium leading-relaxed">{submitError}</div>
+              </div>
+            </div>
+          )}
+
           {/* TAB 1: BASIC INFORMATION */}
           {activeTab === 'basic' && (
             <div className="space-y-4">
@@ -1452,10 +1485,19 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-sm shadow-blue-600/20 cursor-pointer"
+                disabled={isSubmitting}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-300 text-white font-bold rounded-lg shadow-sm shadow-blue-600/20 cursor-pointer flex items-center gap-2"
               >
-                {initialData ? t('common.buttons.save', 'Save Changes') : t('employees.btn.add_member', 'Add Team Member')}
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>{t('common.buttons.saving', 'Saving...')}</span>
+                  </>
+                ) : (
+                  <span>{initialData ? t('common.buttons.save', 'Save Changes') : t('employees.btn.add_member', 'Add Team Member')}</span>
+                )}
               </button>
+
             </div>
           </div>
         </form>
