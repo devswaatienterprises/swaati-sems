@@ -120,15 +120,14 @@ export default function EmployeesPage() {
           setEditingEmployee(null);
         }}
         initialData={editingEmployee}
-        onSave={(data, frontFile, backFile) => {
+        onSave={async (data, frontFile, backFile) => {
           if (editingEmployee) {
-            updateEmployee(editingEmployee.id, data, frontFile, backFile);
+            return await updateEmployee(editingEmployee.id, data, frontFile, backFile);
           } else {
-            addEmployee(data, frontFile, backFile);
+            return await addEmployee(data, frontFile, backFile);
           }
-          setIsAddModalOpen(false);
-          setEditingEmployee(null);
         }}
+
       />
 
       {/* Deactivate Confirmation Modal */}
@@ -261,7 +260,7 @@ export default function EmployeesPage() {
               <tr>
                 <th className="py-3.5 px-4 min-w-[200px]">{t('employees.table.team_member', 'Team Member')}</th>
                 <th className="py-3.5 px-4 whitespace-nowrap">{t('employees.table.user_id', 'User ID')}</th>
-                <th className="py-3.5 px-4 min-w-[200px]">{t('employees.table.dept_designation', 'Department & Designation')}</th>
+                <th className="py-3.5 px-4 min-w-[200px]">{t('employees.table.designation', 'DESIGNATION')}</th>
                 <th className="py-3.5 px-4 min-w-[220px]">{t('employees.table.mobile_email', 'Mobile & Email')}</th>
                 <th className="py-3.5 px-4 whitespace-nowrap">{t('common.labels.status', 'Status')}</th>
                 <th className="py-3.5 px-4 text-right whitespace-nowrap">{t('common.labels.actions', 'More')}</th>
@@ -290,10 +289,9 @@ export default function EmployeesPage() {
                     </span>
                   </td>
 
-                  {/* Department & Designation */}
+                  {/* Designation */}
                   <td className="py-3.5 px-4">
-                    <div className="font-semibold text-slate-800 leading-snug">{emp.designation}</div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">{emp.department}</div>
+                    <div className="font-semibold text-slate-800 leading-snug">{emp.designation || '-'}</div>
                   </td>
 
                   {/* Mobile & Email */}

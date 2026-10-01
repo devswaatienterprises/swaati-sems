@@ -31,6 +31,7 @@ import {
   Shield,
   ShieldAlert,
   Trash2,
+  AlertCircle,
 } from 'lucide-react';
 import {
   DEFAULT_PERMISSIONS,
@@ -40,7 +41,10 @@ import {
 import { useCrm } from '@/context/CrmContext';
 
 export default function EmployeeModal({ isOpen, onClose, onSave, initialData = null }) {
-  const { getEmployeeKycSignedUrls, deleteEmployeeDocument, getEmployeePassword, departments, roles, t } = useCrm();
+  const { getEmployeeKycSignedUrls, deleteEmployeeDocument, getEmployeePassword, fetchRoles, roles, t } = useCrm();
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -48,8 +52,8 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
     password: '',
     email: '',
     mobile: '',
-    department: 'Technical & Operations',
-    designation: 'Site Engineer',
+    roleId: '',
+    designation: '',
     role: 'OPERATION_HEAD',
     joiningDate: new Date().toISOString().split('T')[0],
     reportingManager: 'Shailendra Patil',
@@ -93,6 +97,10 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
   const backInputRef = useRef(null);
 
   useEffect(() => {
+    if (!isOpen) return;
+
+    if (fetchRoles) fetchRoles();
+
     setFrontFile(null);
     setBackFile(null);
     setFrontPreviewUrl(null);
@@ -103,6 +111,8 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
     setIsLoadingPassword(false);
     setLegacyPasswordHint(null);
     setPasswordFetched(false);
+    setSubmitError(null);
+    setIsSubmitting(false);
 
     if (initialData) {
       const doc = initialData.documents?.[0];
@@ -110,9 +120,15 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
       const backUrl = initialData.idCardBackUrl || doc?.backImagePath || '';
       const empId = initialData.realId || initialData.id;
 
+      const matchedRole = (roles || []).find(
+        (r) => r.id === initialData.roleId || (initialData.designation && r.name === initialData.designation)
+      );
+
       setFormData({
         ...initialData,
         password: initialData.password || '',
+        roleId: matchedRole?.id || initialData.roleId || '',
+        designation: matchedRole?.name || initialData.designation || '',
         role: initialData.role || initialData.user?.role || 'OPERATION_HEAD',
         idCardType: initialData.idCardType || doc?.documentType || 'Aadhaar Card',
         idCardNumber: initialData.idCardNumber || doc?.documentNumber || '',
@@ -160,8 +176,8 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
         password: '',
         email: '',
         mobile: '',
-        department: 'Technical & Operations',
-        designation: 'Site Engineer',
+        roleId: '',
+        designation: '',
         role: 'OPERATION_HEAD',
         joiningDate: new Date().toISOString().split('T')[0],
         reportingManager: 'Shailendra Patil',
@@ -178,7 +194,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
         approvedRadiusMeters: 200,
       });
     }
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, fetchRoles]);
 
   // Handle local image preview URLs
   useEffect(() => {
@@ -224,15 +240,30 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const payload = { ...formData };
-    if (initialData && (payload.password === '••••••••' || payload.password === undefined)) {
-      delete payload.password;
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      const payload = { ...formData };
+      if (initialData && (payload.password === '••••••••' || payload.password === undefined)) {
+        delete payload.password;
+      }
+      const res = await onSave(payload, frontFile, backFile);
+      if (res && res.success === false) {
+        setSubmitError(res.error || 'Failed to save team member profile. Server error occurred.');
+        setIsSubmitting(false);
+        return;
+      }
+      onClose();
+    } catch (err) {
+      setSubmitError(err.message || 'An unexpected error occurred while saving.');
+
+    } finally {
+      setIsSubmitting(false);
     }
-    onSave(payload, frontFile, backFile);
-    onClose();
   };
+
 
   const moduleIconMap = {
     dashboard: LayoutDashboard,
@@ -559,6 +590,16 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+          {submitError && (
+            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2.5 mb-2 animate-in fade-in">
+              <AlertCircle className="w-4.5 h-4.5 text-rose-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="font-bold text-rose-900 mb-0.5">Failed to save team member profile</div>
+                <div className="text-rose-700 text-[11px] font-medium leading-relaxed">{submitError}</div>
+              </div>
+            </div>
+          )}
+
           {/* TAB 1: BASIC INFORMATION */}
           {activeTab === 'basic' && (
             <div className="space-y-4">
@@ -682,116 +723,43 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">{t('employees.form.role', 'System Role')} *</label>
-                  <select
-                    value={formData.role || 'OPERATION_HEAD'}
-                    onChange={(e) => {
-                      const selectedRole = e.target.value;
-                      const preset = ROLE_PERMISSION_PRESETS[selectedRole];
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {t('employees.form.designation', 'Designation')} *
+                </label>
+                <select
+                  value={formData.roleId || ''}
+                  onChange={(e) => {
+                    const selectedRoleId = e.target.value;
+                    const matchedRole = (roles || []).find((r) => r.id === selectedRoleId);
+                    if (matchedRole) {
                       setFormData((prev) => ({
                         ...prev,
-                        role: selectedRole,
-                        permissions: preset ? { ...preset } : prev.permissions,
+                        roleId: matchedRole.id,
+                        designation: matchedRole.name,
                       }));
-                    }}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  >
-                    <option value="ADMIN">{t('role.admin', 'Admin (Full Access)')}</option>
-                    <option value="OPERATION_HEAD">{t('role.operation_head', 'Operation Head')}</option>
-                    <option value="SALES">{t('role.sales', 'Sales')}</option>
-                    <option value="ACCOUNTANT">{t('role.accountant', 'Accountant')}</option>
-                    <option value="WAREHOUSE_MANAGER">{t('role.warehouse_manager', 'Warehouse Manager')}</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">{t('employees.form.department', 'Department')}</label>
-                  <select
-                    value={formData.departmentId || formData.department}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const matchedDept = (departments || []).find((d) => d.id === val || d.name === val);
-                      setFormData({
-                        ...formData,
-                        departmentId: matchedDept ? matchedDept.id : '',
-                        department: matchedDept ? matchedDept.name : val,
-                      });
-                    }}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  >
-                    <option value="">Select Department</option>
-                    {(departments || []).length > 0 ? (
-                      (departments || [])
-                        .filter((d) => d.active || d.id === formData.departmentId)
-                        .map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {d.name}
-                          </option>
-                        ))
-                    ) : (
-                      <>
-                        <option value="Technical & Operations">{t('dept.technical_ops', 'Technical & Operations')}</option>
-                        <option value="Sales & Business Dev">{t('dept.sales_dev', 'Sales & Business Dev')}</option>
-                        <option value="Site Execution">{t('dept.site_execution', 'Site Execution')}</option>
-                        <option value="Customer Support">{t('dept.customer_support', 'Customer Support')}</option>
-                        <option value="Executive Management">{t('dept.executive_mgmt', 'Executive Management')}</option>
-                      </>
-                    )}
-                  </select>
-                </div>
+                    } else {
+                      setFormData((prev) => ({
+                        ...prev,
+                        roleId: '',
+                        designation: '',
+                      }));
+                    }
+                  }}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+                  <option value="">Select Role</option>
+                  {(roles || [])
+                    .filter((r) => r.active !== false || r.id === formData.roleId)
+                    .map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    {t('employees.form.designation', 'Designation / Configured Role')}
-                  </label>
-                  {(roles || []).length > 0 ? (
-                    <select
-                      value={formData.roleId || ''}
-                      onChange={(e) => {
-                        const selectedRoleId = e.target.value;
-                        const matchedRole = (roles || []).find((r) => r.id === selectedRoleId);
-                        if (matchedRole) {
-                          setFormData({
-                            ...formData,
-                            roleId: matchedRole.id,
-                            designation: matchedRole.name,
-                            departmentId: matchedRole.departmentId || matchedRole.department?.id,
-                            department: matchedRole.department?.name || formData.department,
-                          });
-                        } else {
-                          setFormData({ ...formData, roleId: '' });
-                        }
-                      }}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    >
-                      <option value="">Select Configured Role (Auto-Assigns SOP Tasks)</option>
-                      {(roles || [])
-                        .filter(
-                          (r) =>
-                            (r.active || r.id === formData.roleId) &&
-                            (!formData.departmentId || r.departmentId === formData.departmentId || r.department?.id === formData.departmentId)
-                        )
-                        .map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name} ({r.department?.name || 'Role'})
-                          </option>
-                        ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      value={formData.designation}
-                      onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-                      placeholder="e.g. Senior Site Engineer"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                  )}
-                </div>
-
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">{t('employees.form.joining_date', 'Joining Date')}</label>
                   <input
@@ -801,9 +769,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">{t('employees.form.reporting_manager', 'Reporting Manager')}</label>
                   <input
@@ -1452,10 +1418,19 @@ export default function EmployeeModal({ isOpen, onClose, onSave, initialData = n
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-sm shadow-blue-600/20 cursor-pointer"
+                disabled={isSubmitting}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-300 text-white font-bold rounded-lg shadow-sm shadow-blue-600/20 cursor-pointer flex items-center gap-2"
               >
-                {initialData ? t('common.buttons.save', 'Save Changes') : t('employees.btn.add_member', 'Add Team Member')}
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>{t('common.buttons.saving', 'Saving...')}</span>
+                  </>
+                ) : (
+                  <span>{initialData ? t('common.buttons.save', 'Save Changes') : t('employees.btn.add_member', 'Add Team Member')}</span>
+                )}
               </button>
+
             </div>
           </div>
         </form>

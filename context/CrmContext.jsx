@@ -622,11 +622,13 @@ export function CrmProvider({ children }) {
   }, [isAuthenticated, fetchAllData]);
 
   // Login Handler (Real Database Authentication)
-  const login = async (credential, password, mode = 'ADMIN') => {
-    const payload =
-      mode === 'ADMIN'
-        ? { email: credential, password }
-        : { userId: credential, password };
+  const login = async (credential, password, mode) => {
+    const trimmed = (credential || '').trim();
+    const payload = mode === 'EMPLOYEE'
+      ? { userId: trimmed, password }
+      : mode === 'ADMIN'
+      ? { email: trimmed, password }
+      : { email: trimmed, userId: trimmed, password };
 
     const res = await apiRequest('/auth/login', 'POST', payload);
     if (res?.success && res.data) {
@@ -651,7 +653,7 @@ export function CrmProvider({ children }) {
       return { success: true };
     }
 
-    return { success: false, message: res?.message || 'Login failed. Please check credentials.' };
+    return { success: false, message: res?.message || res?.error?.message || 'Login failed. Please check credentials.' };
   };
 
   // Logout Handler
@@ -682,6 +684,8 @@ export function CrmProvider({ children }) {
       mobile: empData.mobile,
       department: empData.department,
       designation: empData.designation,
+      departmentId: empData.departmentId,
+      roleId: empData.roleId,
       reportingManager: empData.reportingManager,
       joiningDate: empData.joiningDate,
       role: empData.role || 'OPERATION_HEAD',
@@ -712,10 +716,14 @@ export function CrmProvider({ children }) {
 
       const normalized = normalizeEmployee(createdEmployee);
       setEmployees((prev) => [normalized, ...prev]);
-      return normalized;
+      return { success: true, data: normalized };
     }
-    return null;
+    return {
+      success: false,
+      error: res?.error || res?.message || 'Failed to create team member. Server error occurred.',
+    };
   };
+
 
   const getEmployeeKycSignedUrls = async (empId, docId) => {
     const res = await apiRequest(`/employees/${empId}/documents/${docId}/signed-url`);
@@ -794,7 +802,13 @@ export function CrmProvider({ children }) {
     const emp = employees.find((e) => e.id === empId);
     const realId = emp?.realId || empId;
 
-    await apiRequest(`/employees/${realId}`, 'PUT', updatedData);
+    const res = await apiRequest(`/employees/${realId}`, 'PUT', updatedData);
+    if (!res?.success) {
+      return {
+        success: false,
+        error: res?.error || res?.message || 'Failed to update team member. Server error occurred.',
+      };
+    }
 
     if (updatedData.permissions) {
       await apiRequest(`/employees/${realId}/permissions`, 'PATCH', {
@@ -836,7 +850,9 @@ export function CrmProvider({ children }) {
           : e
       )
     );
+    return { success: true };
   };
+
 
   const deactivateEmployee = async (empId) => {
     const emp = employees.find((e) => e.id === empId);
