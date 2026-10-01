@@ -684,6 +684,8 @@ export function CrmProvider({ children }) {
       mobile: empData.mobile,
       department: empData.department,
       designation: empData.designation,
+      departmentId: empData.departmentId,
+      roleId: empData.roleId,
       reportingManager: empData.reportingManager,
       joiningDate: empData.joiningDate,
       role: empData.role || 'OPERATION_HEAD',
